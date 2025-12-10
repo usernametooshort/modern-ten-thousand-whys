@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="solar_title">太阳系运动模型 - 沉浸式科学可视化</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js",
+                "three/addons/": "../libs/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <a href="../index.html" class="back-to-home" data-i18n="back_to_home">← 返回目录</a>
+    <div id="scene-container"></div>
+
+    <div id="ui-layer">
+        <button id="mobile-info-toggle" class="mobile-toggle">i</button>
+        <header>
+            <div class="lang-switcher">
+                <button class="lang-btn" onclick="window.i18n.setLanguage('zh')" data-lang="zh">中文</button>
+                <button class="lang-btn" onclick="window.i18n.setLanguage('en')" data-lang="en">EN</button>
+                <button class="lang-btn" onclick="window.i18n.setLanguage('de')" data-lang="de">DE</button>
+            </div>
+            <h1 data-i18n="solar_title">太阳系运动模型</h1>
+            <p class="subtitle" data-i18n="solar_intro">探索行星公转与相对速度</p>
+        </header>
+
+        <aside class="info-panel">
+            <div class="description">
+                <p data-i18n="solar_intro">太阳系包含八大行星，它们受太阳引力牵引，沿着近似椭圆的轨道运行。</p>
+            </div>
+            <div id="planet-info" class="hidden">
+                <h2 id="info-name">行星名称</h2>
+                <p id="info-details">详细信息...</p>
+                <div id="info-facts" class="facts-grid"></div>
+            </div>
+        </aside>
+
+        <div class="controls">
+            <div class="control-group">
+                <button id="btn-pause" data-i18n="btn_pause">暂停</button>
+                <button id="btn-reset" data-i18n="btn_reset">重置视角</button>
+            </div>
+            <div class="control-group">
+                <label for="slider-speed" data-i18n="solar_ctrl_speed">演化速度</label>
+                <input type="range" id="slider-speed" min="0" max="5" step="0.1" value="1">
+            </div>
+            <div class="control-group">
+                <label for="toggle-orbits" data-i18n="solar_ctrl_orbits">显示轨道</label>
+                <input type="checkbox" id="toggle-orbits" checked>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/i18n.js?v=20241126_4"></script>
+    <script type="module" src="js/main.js?v=20241126_4"></script>
+</body>
+</html>

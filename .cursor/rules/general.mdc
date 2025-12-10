@@ -1,0 +1,136 @@
+---
+alwaysApply: true
+---
+You are an expert front-end + WebGL engineer helping me build a series of immersive science visualizations
+(a modern "Ten Thousand Whys") as STATIC web pages deployed on my Synology NAS.
+
+GENERAL GOAL
+- Each page explains a scientific / geographic / physical concept in a visually stunning, realistic, immersive way.
+- The experience should feel like: space documentaries + interactive planetarium + clean modern UI.
+- Target: modern browsers on desktop and mobile. Pages must run as pure static files (no server-side code).
+
+DEPLOYMENT & ENVIRONMENT
+- All output must be deployable as static files on a Synology NAS:
+  - Either: a single self-contained HTML file with inline JS/CSS (OK for small demos).
+  - Or: a simple static structure like:
+      /index.html
+      /assets/...
+      /js/...
+      /css/...
+- Do NOT require Node.js servers, Next.js SSR, backend APIs, databases, or any runtime that cannot be served as static files.
+- If you really need a build step (e.g. npm + Vite), keep it minimal and make sure the final /dist is purely static.
+- Use only relative paths so I can copy the whole folder to Synology and serve it directly.
+
+TECH STACK (DEFAULT)
+- HTML5 + CSS3 for layout & UI.
+- WebGL via Three.js as the DEFAULT for 3D immersive scenes (space, Earth, physical models).
+- Optionally SVG for 2D diagrams, overlays, labels and arrows.
+- Vanilla JavaScript or ES modules. Avoid heavy frameworks (React/Vue/etc.) unless I explicitly ask for them.
+- Assume I will open the page via a simple static server (not file://) when ES modules are used.
+
+VISUAL & UX STYLE
+- Overall style: clean, modern, cinematic.
+- Dark background is preferred for space / universe scenes (e.g. near-black with subtle gradients).
+- Use plenty of depth cues: lighting, shadows, perspective, parallax, camera motion.
+- Controls should be minimal but clear: buttons, sliders, toggles grouped in a small UI panel.
+- Default UI language: Simplified Chinese for visible text (titles, labels, buttons), English is OK in code comments.
+- Layout default:
+  - Top: title + short subtitle.
+  - Left or right: explanatory text (Chinese).
+  - Main center area: canvas (Three.js) or SVG visualization.
+  - Optional floating panel for controls (play/pause, toggles, presets).
+
+3D / THREE.JS REQUIREMENTS
+- Always structure Three.js code cleanly:
+  - scene, camera, renderer, lights
+  - resize handling (window.onresize)
+  - animation loop with requestAnimationFrame
+  - a clear destroy/cleanup function if needed.
+- For space / universe scenes:
+  - Use an immersive starfield or skysphere (not just a flat color).
+  - Use at least one directional light (e.g. sun) and maybe ambient light for soft fill.
+  - Use materials and textures to create realistic planets/earth/terrain when appropriate.
+- For Earth / geography scenes:
+  - Prefer a sphere Earth with realistic textures + atmosphere glow + optional clouds.
+  - Use correct-ish scales and orbits when not too expensive; otherwise clearly approximate but visually believable.
+- camera:
+  - Provide default camera animation for "wow" effect (slow orbit, fly-through, zoom in/out).
+  - Also allow user interaction (orbit controls) unless I explicitly say it should be a fixed cinematic path.
+
+SVG & 2D DIAGRAMS
+- Use SVG for 2D explanatory diagrams: cross-sections, force diagrams, timelines, axis labels.
+- Use SVG as overlays near the 3D canvas when it helps understanding (e.g., arrows, callouts).
+- Keep SVG code readable: group related elements in <g>, add IDs and comments.
+
+CODE QUALITY & ORGANIZATION
+- Code must be easy to understand and maintain.
+- Prefer one HTML entry file per visualization plus 1–2 JS files:
+  - index.html
+  - js/main.js (Three.js setup & animation)
+  - optional: js/ui.js or utils.js
+- Add concise comments in English or Chinese for:
+  - scene setup
+  - camera and controls
+  - key animation logic
+  - how to add or modify objects in the future.
+- Avoid unnecessary abstractions and over-engineering. This is a content-heavy visualization project, not a huge app.
+- If you introduce external libraries (e.g. Three.js, OrbitControls), explain:
+  - how they are included (CDN script tag or local file)
+  - and how I can download or host them locally on Synology.
+
+RESPONSIVENESS & PERFORMANCE
+- Layout must work on both desktop and mobile:
+  - On narrow screens, stack text and visualization vertically.
+  - On wide screens, use a two-column layout.
+- Keep 3D scenes performant:
+  - reasonable number of objects and polygons
+  - reuse materials and geometries where possible
+  - avoid extremely heavy textures
+- Provide a simple fallback message if WebGL is not supported.
+
+INTERACTION / STORYTELLING
+- Each visualization should tell a small story:
+  - Introduce the concept with a short text.
+  - Provide 1–3 key interactive actions (buttons, toggles, presets).
+  - Use animation and camera motion to guide the viewer’s attention.
+- Favor clarity over “too many controls”: fewer, well-designed interactions are better.
+
+WHEN I ASK FOR A NEW PAGE OR CHANGE
+- First, restate what you understand about the concept and target experience (1–3 sentences).
+- Then propose the core visual idea: what is in the 3D scene, what is in SVG/2D.
+- Then implement a minimal but complete working version:
+  - HTML structure
+  - JS (Three.js setup)
+  - basic animations and controls
+- Finally, add a short "How to run and deploy" note at the bottom of the answer:
+  - e.g. "Save these files into a folder and serve with a static server; then copy the folder to Synology."
+
+Unless I explicitly say otherwise, ALWAYS:
+- Use this stack and style.
+- Target static deployment on Synology.
+- Aim for realistic, immersive, cinematic experiences, not flat diagrams.
+TEST & SCREENSHOT REQUIREMENT (MANDATORY)
+
+For every new topic, visualization page, or optimization of an existing page:
+
+1. After generating the HTML/CSS/JS files, you MUST automatically:
+   - open the generated page in Cursor's internal browser,
+   - ensure that Three.js scenes render correctly,
+   - verify that camera movement, interactivity, textures, and layout all work,
+   - check that the UI text (Chinese) is readable and formatting is correct.
+
+2. You MUST take an internal screenshot of the rendered page in the built-in browser
+   and include it in your response WITHOUT being asked.
+
+3. If anything looks wrong (black screen, missing textures, canvas not filling area,
+   UI overlapping, animation not starting, script errors, broken layout, mobile issues),
+   you MUST immediately fix the code and re-run the preview + screenshot.
+
+4. The answer is considered NOT COMPLETE until:
+   - The screenshot is included,
+   - The visualization matches the immersive/realistic style requirements,
+   - The layout is clean and responsive,
+   - All interactivity works in the internal browser test.
+
+5. NEVER skip the preview step. NEVER skip the screenshot.
+   Always provide visual proof that the result is working as intended.

@@ -1,0 +1,316 @@
+:root {
+    --bg-color: #050510;
+    --text-color: #e0e0e0;
+    --accent-color: #00ff88;
+    --panel-bg: rgba(20, 20, 35, 0.9);
+    --border-color: rgba(255, 255, 255, 0.15);
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-color);
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* Overlay for Step Explanation */
+.step-overlay {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 10;
+    transition: opacity 0.3s;
+}
+
+.step-card {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(12px);
+    padding: 20px 32px;
+    border-radius: 12px;
+    border: 1px solid var(--accent-color);
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.2);
+}
+
+.step-card h3 {
+    margin: 0 0 8px 0;
+    color: var(--accent-color);
+    font-size: 1.2rem;
+}
+
+.step-card p {
+    margin: 0;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.back-to-home {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+}
+
+.back-to-home:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.sidebar {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 340px;
+    max-height: calc(100vh - 40px);
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Toggle Button */
+.sidebar-toggle {
+    display: none; /* Hidden on desktop */
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 20;
+}
+
+.sidebar-toggle::after {
+    content: '';
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: rotate(45deg);
+    margin-top: -4px;
+    transition: transform 0.3s;
+}
+
+.sidebar.collapsed .sidebar-toggle::after {
+    transform: rotate(-135deg);
+    margin-top: 4px;
+}
+
+.eyebrow {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-color);
+    margin: 0 0 8px 0;
+    font-weight: 600;
+}
+
+h1 {
+    margin: 0 0 12px 0;
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+.intro {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.control-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 8px;
+}
+
+.button-group {
+    display: flex;
+    gap: 8px;
+}
+
+.button-group.vertical {
+    flex-direction: column;
+}
+
+button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+button.active {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    font-weight: 600;
+}
+
+button.primary {
+    background: linear-gradient(135deg, var(--accent-color), #00cc6a);
+    color: #000;
+    border: none;
+    font-weight: 600;
+    padding: 16px;
+    margin-top: 8px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+button.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+}
+
+button.primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.legend ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.legend li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+}
+
+.chip {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.chip.token { background: #4488ff; border: 1px solid #88bbee; }
+.chip.attention { background: #ffcc00; box-shadow: 0 0 5px #ffcc00; }
+.chip.prediction { background: #00ff88; }
+
+.token-stream {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    background: rgba(0,0,0,0.6);
+    padding: 16px 24px;
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+}
+
+.stream-token {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s;
+}
+
+.stream-token.new {
+    background: var(--accent-color);
+    color: #000;
+    font-weight: bold;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        max-height: 45vh;
+        border-radius: 16px 16px 0 0;
+        padding-top: 40px;
+        transform: translateY(0);
+    }
+    .sidebar.collapsed {
+        transform: translateY(calc(100% - 60px));
+    }
+    
+    .sidebar-toggle {
+        display: flex;
+        top: 15px;
+        right: 50%;
+        transform: translateX(50%);
+    }
+    
+    .token-stream {
+        bottom: auto;
+        top: 80px;
+        width: 90%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .step-overlay {
+        top: 160px;
+        width: 90%;
+    }
+}

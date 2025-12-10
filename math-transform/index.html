@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学符号变换 (Math Symbol Transformer)</title>
+    <link rel="stylesheet" href="css/style.css?v=1">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- Loading Overlay (Minecraft Style) -->
+    <div id="loading-overlay">
+        <div class="mc-header">
+            <h1 class="mc-logo">MATH TRANSFORM</h1>
+            <div class="mc-subtitle">SYMBOL MASTER EDITION</div>
+        </div>
+        
+        <div class="loading-container">
+            <div class="loading-text">Initializing server...</div>
+            <div class="loading-subtext">Generating terrain</div>
+            <div class="loading-bar-bg">
+                <div id="loading-bar"></div>
+            </div>
+        </div>
+
+        <div class="mc-tip-box">
+            <p id="mc-tip-text">In math, two negatives make a positive!</p>
+        </div>
+    </div>
+
+    <!-- Reward Layer (Background) -->
+    <div id="reward-layer">
+        <img id="reward-img" src="assets/rewards/img1.jpg" alt="Reward Background" onerror="this.style.opacity=0">
+        <div id="reward-overlay"></div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Container -->
+    <div id="ui-container">
+        
+        <header>
+            <a href="../index.html" class="back-home-btn" id="btn-home">
+                <span>🏠</span> <span class="text">返回主页</span>
+            </a>
+            
+            <div class="title-group">
+                <h1 id="main-title">数学符号变换</h1>
+                <p class="subtitle" id="sub-title">括号展开 · 移项变号 · 合并同类项</p>
+            </div>
+
+            <div class="lang-switcher">
+                <button id="btn-toggle-settings" class="lang-btn" title="Settings">⚙️</button>
+                <button class="lang-btn active" data-lang="zh">中</button>
+                <button class="lang-btn" data-lang="en">En</button>
+                <button class="lang-btn" data-lang="de">De</button>
+            </div>
+        </header>
+
+        <!-- Game Panel -->
+        <div id="game-panel">
+            <!-- Score Board -->
+            <div id="score-board">
+                <div class="score-item">
+                    <span id="lbl-level">当前等级</span>: <span id="level-val">1</span>
+                </div>
+                <div class="score-item">
+                    <span id="lbl-streak">连对</span>: <span id="streak-val">0</span>
+                </div>
+                <div class="score-item">
+                    <span id="lbl-mastery">本关进度</span>: 
+                    <div class="progress-container">
+                        <div id="mastery-bar">0/25</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Area -->
+            <div id="question-area">
+                <div id="question-tags">
+                    <span id="tag-type" class="tag-pill">符号法则</span>
+                </div>
+                
+                <div id="question-prompt"></div>
+                <div id="question-equals">=</div>
+                <div id="question-blank">?</div>
+                
+                <div id="options-grid"></div>
+                
+                <!-- Explanation Area -->
+                <div id="explanation-area" class="hidden"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button id="btn-next" class="btn primary">下一题</button>
+                <button id="btn-table" class="btn">查看公式表</button>
+            </div>
+
+            <!-- Reward Controls -->
+            <div class="reward-controls">
+                 <button id="btn-download-reward" class="btn" disabled>💾 保存壁纸</button>
+                 <button id="btn-next-reward" class="btn">🖼️ 换一张</button>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel">
+            <button class="close-panel-btn">X</button>
+            <h3 id="lbl-settings">题型设置</h3>
+            
+            <div class="setting-group">
+                <label id="lbl-types">题目类型</label>
+                <div class="setting-options">
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-sign" checked> <label for="opt-sign" id="lbl-sign">符号法则</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-bracket" checked> <label for="opt-bracket" id="lbl-bracket">括号展开</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-nested" checked> <label for="opt-nested" id="lbl-nested">嵌套括号</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-distribute" checked> <label for="opt-distribute" id="lbl-distribute">分配律</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-move" checked> <label for="opt-move" id="lbl-move">移项变号</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-combine" checked> <label for="opt-combine" id="lbl-combine">合并同类项</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-fraction" checked> <label for="opt-fraction" id="lbl-fraction">分数符号</label></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Table (Formula Reference) -->
+        <div id="modal-table" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal close-btn">&times;</span>
+                <h3 id="modal-title-text">数学符号变换公式表</h3>
+                
+                <div id="formula-container">
+                    <div class="formula-section">
+                        <h4>1. 符号法则</h4>
+                        <table>
+                            <tr><td>+(+a) = +a</td><td>正 × 正 = 正</td></tr>
+                            <tr><td>+(-a) = -a</td><td>正 × 负 = 负</td></tr>
+                            <tr><td>-(+a) = -a</td><td>负 × 正 = 负</td></tr>
+                            <tr><td>-(-a) = +a</td><td>负 × 负 = 正</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div class="formula-section">
+                        <h4>2. 括号展开</h4>
+                        <table>
+                            <tr><td>-(a + b) = -a - b</td></tr>
+                            <tr><td>-(a - b) = -a + b</td></tr>
+                            <tr><td>+(a + b) = a + b</td></tr>
+                            <tr><td>+(a - b) = a - b</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div class="formula-section">
+                        <h4>3. 嵌套括号 ⭐</h4>
+                        <table>
+                            <tr><td>a - (b + c) = a - b - c</td><td><em>减号分配到每一项</em></td></tr>
+                            <tr><td>a - (b - c) = a - b + c</td><td><em>负负得正！</em></td></tr>
+                            <tr><td>a + (b - c) = a + b - c</td><td><em>加号不改变符号</em></td></tr>
+                            <tr><td>a + (b + c) = a + b + c</td><td><em>直接去括号</em></td></tr>
+                        </table>
+                    </div>
+                    
+                    <div class="formula-section">
+                        <h4>4. 分配律</h4>
+                        <table>
+                            <tr><td>a(b + c) = ab + ac</td></tr>
+                            <tr><td>a(b - c) = ab - ac</td></tr>
+                            <tr><td>-a(b + c) = -ab - ac</td></tr>
+                            <tr><td>-a(b - c) = -ab + ac</td></tr>
+                        </table>
+                    </div>
+                    
+                    <div class="formula-section">
+                        <h4>5. 移项法则</h4>
+                        <table>
+                            <tr><td>a + b = c → a = c - b</td></tr>
+                            <tr><td>a - b = c → a = c + b</td></tr>
+                            <tr><td colspan="2"><em>移项要变号！</em></td></tr>
+                        </table>
+                    </div>
+                    
+                    <div class="formula-section">
+                        <h4>6. 合并同类项</h4>
+                        <table>
+                            <tr><td>2a + 3a = 5a</td></tr>
+                            <tr><td>5x - 2x = 3x</td></tr>
+                            <tr><td colspan="2"><em>系数相加减，字母不变</em></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Error Log -->
+        <div id="error-log" style="display:none; position:fixed; bottom:0; left:0; background:red; color:white; padding:10px; z-index:9999;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/main.js?v=1"></script>
+</body>
+</html>
+

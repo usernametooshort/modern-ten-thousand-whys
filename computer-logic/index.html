@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算机底层逻辑可视化 - Ten Thousand Whys</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js",
+                "three/addons/": "../libs/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui-container">
+        <header>
+            <h1>计算机底层逻辑 <span class="subtitle">CPU 工作原理可视化</span></h1>
+            <p class="description">
+                探索计算机核心如何处理信息。观察数据在 CPU、内存和总线之间的流动过程。<br>
+                体验经典的 <strong>冯·诺依曼架构 (Von Neumann Architecture)</strong>。
+            </p>
+        </header>
+
+        <div id="status-panel">
+            <div class="panel-section">
+                <h3>当前指令 (Current Instruction)</h3>
+                <div id="instruction-display" class="digital-display">WAITING...</div>
+                <div id="step-display" class="step-indicator">IDLE</div>
+            </div>
+            
+            <div class="panel-section">
+                <h3>寄存器状态 (Registers)</h3>
+                <div class="register-row">
+                    <span class="label">PC (计数器):</span>
+                    <span id="reg-pc" class="value">0000</span>
+                </div>
+                <div class="register-row">
+                    <span class="label">IR (指令):</span>
+                    <span id="reg-ir" class="value">0000 0000</span>
+                </div>
+                <div class="register-row">
+                    <span class="label">ACC (累加器):</span>
+                    <span id="reg-acc" class="value">0000</span>
+                </div>
+                <div class="register-row">
+                    <span class="label">ALU (运算):</span>
+                    <span id="reg-alu" class="value">----</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="btn-step" class="primary-btn">单步执行 (Step)</button>
+                <button id="btn-run" class="secondary-btn">自动运行 (Auto)</button>
+                <button id="btn-reset" class="secondary-btn">重置 (Reset)</button>
+            </div>
+            
+            <div class="speed-control">
+                <label>时钟频率: <span id="speed-val">1Hz</span></label>
+                <input type="range" id="speed-slider" min="1" max="10" value="1">
+            </div>
+        </div>
+
+        <div id="legend">
+            <div class="item"><span class="dot color-data"></span> 数据流 (Data)</div>
+            <div class="item"><span class="dot color-control"></span> 控制信号 (Control)</div>
+            <div class="item"><span class="dot color-addr"></span> 地址总线 (Address)</div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高层建筑火灾逃生模拟 | High-rise Fire Escape Simulation</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js",
+                "three/addons/": "../libs/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <div class="header">
+            <div class="back-button">
+                <a href="../index.html" class="btn-back">← 返回首页</a>
+            </div>
+            <h1>高层建筑火灾逃生模拟</h1>
+            <p class="subtitle">Fire Escape & Rescue Efficiency Simulation</p>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-item">
+                <span class="label">存活人数</span>
+                <span class="value" id="survivors-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">遇难人数</span>
+                <span class="value casualty" id="casualties-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">当前状态</span>
+                <span class="value status" id="sim-status">准备就绪</span>
+            </div>
+        </div>
+
+        <!-- Risk Analysis Overlay -->
+        <div id="risk-analysis" class="risk-panel">
+            <h4>生存预测 (Survival Forecast)</h4>
+            <div class="risk-legend">
+                <div class="legend-item"><span class="dot safe"></span> <span id="safe-floors">Safe: 1-5</span></div>
+                <div class="legend-item"><span class="dot warning"></span> <span id="risk-floors">Risk: 6-10</span></div>
+                <div class="legend-item"><span class="dot danger"></span> <span id="fatal-floors">Fatal: 11+</span></div>
+            </div>
+            <p class="risk-note">拖动滑块查看救援时间对生存率的影响</p>
+        </div>
+
+        <div class="controls-panel" id="sidebar">
+            <div class="control-group">
+                <h3>场景参数 (Parameters)</h3>
+                
+                <label>楼层高度 (Total Floors)</label>
+                <div class="slider-container">
+                    <input type="range" id="floor-count" min="10" max="60" value="30" step="1">
+                    <span id="floor-count-val">30层</span>
+                </div>
+
+                <label>起火楼层 (Fire Start Floor)</label>
+                <div class="slider-container">
+                    <input type="range" id="fire-floor" min="2" max="29" value="10" step="1">
+                    <span id="fire-floor-val">10层</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>救援与逃生 (Rescue & Evacuation)</h3>
+                
+                <label>火势蔓延速度 (Fire Spread Speed)</label>
+                <div class="slider-container">
+                    <input type="range" id="fire-speed" min="1" max="10" value="5">
+                    <span id="fire-speed-val">中等</span>
+                </div>
+
+                <label>消防响应时间 (Rescue Delay)</label>
+                <div class="slider-container">
+                    <input type="range" id="rescue-delay" min="5" max="60" value="20">
+                    <span id="rescue-delay-val">20秒</span>
+                </div>
+
+                <label>建筑材料 (Material)</label>
+                <div class="slider-container" style="display:block;">
+                    <select id="material-type" class="select-style">
+                        <option value="concrete">钢筋混凝土 (Concrete) - 耐火</option>
+                        <option value="steel">钢结构 (Steel) - 导热快</option>
+                        <option value="wood">老式木混 (Wood) - 易燃</option>
+                    </select>
+                </div>
+
+                <div class="control-toggle">
+                     <label>
+                        <input type="checkbox" id="toggle-thermal">
+                        显示热力图 (Thermal View)
+                    </label>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="btn-start" class="btn-primary">🔥 开始模拟 (Start)</button>
+                <button id="btn-reset" class="btn-secondary">↺ 重置 (Reset)</button>
+            </div>
+            
+            <div class="explanation">
+                <h4>模拟说明</h4>
+                <p>本模型演示了火灾在高层建筑中的垂直蔓延与人员疏散的赛跑。</p>
+                <ul>
+                    <li><span class="dot safe"></span> 绿色：安全/疏散中</li>
+                    <li><span class="dot danger"></span> 红色：火灾蔓延区域</li>
+                    <li><span class="dot smoke"></span> 灰色：烟雾扩散区域</li>
+                </ul>
+                <p class="note">注意：消防响应越快，火势被控制得越早，高层生存率越高。</p>
+            </div>
+        </div>
+        
+        <!-- Mobile Toggle Button -->
+        <button id="sidebar-toggle" class="mobile-fab" aria-label="Toggle Controls">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20v-6M6 20V10M18 20V4" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <script src="../assets/js/i18n.js?v=20241126_22"></script>
+    <script type="module" src="js/main.js?v=20241126_22"></script>
+</body>
+</html>

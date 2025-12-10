@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德语变格构建器 (German Declension Constructor)</title>
+    <link rel="stylesheet" href="css/style.css?v=20241130_09">
+    <!-- Import Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <!-- Loading Overlay (Minecraft Style) -->
+    <div id="loading-overlay">
+        <div class="mc-header">
+            <h1 class="mc-logo">GERMAN GRAMMAR</h1>
+            <div class="mc-subtitle">CONSTRUCTOR EDITION</div>
+        </div>
+        
+        <div class="loading-container">
+            <div class="loading-text">Initializing server...</div>
+            <div class="loading-subtext">Generating terrain</div>
+            <div class="loading-bar-bg">
+                <div id="loading-bar"></div>
+            </div>
+        </div>
+
+        <div class="mc-tip-box">
+            <p id="mc-tip-text">Obsidian can only be mined with a diamond pickaxe.</p>
+        </div>
+    </div>
+
+    <!-- Reward Layer (Background) -->
+    <div id="reward-layer">
+        <!-- Default to img1.jpg if available, otherwise handled by JS -->
+        <img id="reward-img" src="assets/rewards/img1.jpg" alt="Reward Background" onerror="this.style.opacity=0">
+        <div id="reward-overlay"></div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Container -->
+    <div id="ui-container">
+        
+        <header>
+            <a href="../index.html" class="back-home-btn" id="btn-home">
+                <span>🏠</span> <span class="text">Back to Home</span>
+            </a>
+            
+            <div class="title-group">
+                <h1 id="main-title">德语变格构建器</h1>
+                <p class="subtitle" id="sub-title">冠词与形容词词尾训练</p>
+            </div>
+
+            <div class="lang-switcher">
+                <button id="btn-toggle-settings" class="lang-btn" title="Settings">⚙️</button>
+                <button class="lang-btn active" data-lang="zh">中</button>
+                <button class="lang-btn" data-lang="en">En</button>
+                <button class="lang-btn" data-lang="de">De</button>
+            </div>
+        </header>
+
+        <!-- Game Panel -->
+        <div id="game-panel">
+            <!-- Score Board -->
+            <div id="score-board">
+                <div class="score-item">
+                    <span id="lbl-level">当前等级</span>: <span id="level-val">1</span>
+                </div>
+                <div class="score-item">
+                    <span id="lbl-streak">连对</span>: <span id="streak-val">0</span>
+                </div>
+                <div class="score-item">
+                    <span id="lbl-mastery">掌握度</span>: 
+                    <div class="progress-container">
+                        <div id="mastery-bar">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Area -->
+            <div id="question-area">
+                <div id="question-tags">
+                    <span id="tag-declension" class="tag-pill">Weak</span>
+                    <span id="tag-case" class="tag-pill">Nom</span>
+                </div>
+                
+                <div id="sentence-container"></div>
+                
+                <div id="context-hint">(Context Hint)</div>
+                
+                <div id="options-grid" class="hidden"></div>
+                
+                <!-- Explanation Area -->
+                <div id="explanation-area" class="hidden"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button id="btn-check" class="btn primary" disabled>检查</button>
+                <button id="btn-next" class="btn primary hidden">下一题</button>
+                <button id="btn-table" class="btn" id="btn-table">查看语法表</button>
+            </div>
+
+            <!-- Reward Controls -->
+            <div class="reward-controls">
+                 <button id="btn-download-reward" class="btn" disabled>💾 保存壁纸</button>
+                 <button id="btn-next-reward" class="btn">🖼️ 换一张</button>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel">
+            <button class="close-panel-btn">X</button>
+            <h3 id="lbl-settings">难度设置</h3>
+            
+            <div class="setting-group">
+                <label id="lbl-mode">模式</label>
+                <div class="setting-options">
+                    <div class="radio-wrapper">
+                         <input type="radio" name="mode" id="mode-adj" value="adj" checked>
+                         <label for="mode-adj" id="lbl-mode-adj">形容词词尾</label>
+                    </div>
+                    <div class="radio-wrapper">
+                         <input type="radio" name="mode" id="mode-art" value="art">
+                         <label for="mode-art" id="lbl-mode-art">名词定冠词</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label id="lbl-case">格 (Case)</label>
+                <div class="setting-options">
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-nom" checked> <label for="opt-nom" id="lbl-nom">Nom</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-akk" checked> <label for="opt-akk" id="lbl-akk">Akk</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-dat" checked> <label for="opt-dat" id="lbl-dat">Dat</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-gen"> <label for="opt-gen" id="lbl-gen">Gen</label></div>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label id="lbl-art">冠词类型</label>
+                <div class="setting-options">
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-def" checked> <label for="opt-def" id="lbl-def">定冠词</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-indef" checked> <label for="opt-indef" id="lbl-indef">不定冠词</label></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" id="opt-none" checked> <label for="opt-none" id="lbl-none">无冠词</label></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Table -->
+        <div id="modal-table" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal close-btn">&times;</span>
+                <h3 id="modal-title-text">形容词词尾变化表</h3>
+                
+                <div class="grammar-tabs">
+                    <button class="tab-btn active" data-tab="weak">弱变化</button>
+                    <button class="tab-btn" data-tab="mixed">混合变化</button>
+                    <button class="tab-btn" data-tab="strong">强变化</button>
+                </div>
+
+                <div id="table-container"></div>
+            </div>
+        </div>
+        
+        <!-- Error Log -->
+        <div id="error-log" style="display:none; position:fixed; bottom:0; left:0; background:red; color:white; padding:10px; z-index:9999;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/i18n.js?v=20241130_10"></script>
+    <script type="module" src="js/main.js?v=20241130_10"></script>
+</body>
+</html>

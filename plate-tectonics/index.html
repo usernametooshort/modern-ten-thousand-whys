@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="tect_title">板块构造与地震成因 - 沉浸式地质科普</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../libs/three/build/three.module.js",
+                "three/addons/": "../libs/three/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <a href="../index.html" class="back-to-home" data-i18n="back_to_home">← 返回目录</a>
+    <div id="scene-container">
+        <canvas id="scene-canvas" aria-hidden="true"></canvas>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-toggle"></div>
+        <header>
+            <div class="lang-switcher">
+                <button class="lang-btn" onclick="window.i18n.setLanguage('zh')" data-lang="zh">中文</button>
+                <button class="lang-btn" onclick="window.i18n.setLanguage('en')" data-lang="en">EN</button>
+                <button class="lang-btn" onclick="window.i18n.setLanguage('de')" data-lang="de">DE</button>
+            </div>
+            <p class="eyebrow" data-i18n="ch2_title">地球系统与生命圈</p>
+            <h1 data-i18n="tect_title">板块构造与地震成因</h1>
+            <p class="intro" data-i18n="tect_intro">探索地球岩石圈的三种边界类型及其地质活动</p>
+        </header>
+
+        <aside class="controls">
+            <h3 data-i18n="tect_ctrl_boundary" style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 8px;">边界类型</h3>
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="divergent" data-i18n="tect_mode_div">张裂 (生长)</button>
+                <button class="mode-btn" data-mode="convergent" data-i18n="tect_mode_con">汇聚 (消亡)</button>
+                <button class="mode-btn" data-mode="transform" data-i18n="tect_mode_trans">转换 (错动)</button>
+            </div>
+            
+            <div class="description-box" style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted);">
+                <p id="boundary-desc" data-i18n="tect_desc_div" style="margin: 0;">
+                    张裂边界 (Divergent): 板块向两侧张裂，地幔物质上涌填充裂谷，形成新的地壳（如大洋中脊）。常伴随浅源地震和火山活动。
+                </p>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span data-i18n="tect_ctrl_waves">显示震波 (Earthquakes)</span>
+                    <input type="checkbox" id="toggle-waves">
+                </label>
+            </div>
+            <div class="control-group">
+                <label>
+                    <span data-i18n="tect_ctrl_magma">显示岩浆 (Magma)</span>
+                    <input type="checkbox" id="toggle-magma" checked>
+                </label>
+            </div>
+            
+            <button id="btn-reset" data-i18n="tect_btn_reset">重置视角</button>
+        </aside>
+
+        <div class="legend">
+            <h4 data-i18n="tect_legend_title">图例说明</h4>
+            <div class="legend-item">
+                <span class="color-box crust"></span>
+                <span data-i18n="tect_leg_crust">岩石圈 (地壳+上地幔顶部)</span>
+            </div>
+            <div class="legend-item">
+                <span class="color-box mantle"></span>
+                <span data-i18n="tect_leg_mantle">软流层 (岩浆来源)</span>
+            </div>
+            <div class="legend-item">
+                <span class="color-box quake"></span>
+                <span data-i18n="tect_leg_quake">震源 / 震波</span>
+            </div>
+            <div class="legend-item">
+                <span class="color-box volcano"></span>
+                <span data-i18n="tect_leg_volcano">火山活动</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/i18n.js?v=20241126_4"></script>
+    <script type="module" src="js/main.js?v=20241126_fix_ui"></script>
+</body>
+</html>
