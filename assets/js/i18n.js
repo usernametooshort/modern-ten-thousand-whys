@@ -665,10 +665,10 @@ const translations = {
         ch6_title: "Immersive Learning Through Play",
         ch6_intro: "Learn economics, history and social dynamics through gamification, gaining knowledge while having fun.",
         exp_6_1_bread: "Home › Games › Exp 6.1",
-        exp_6_1_title: "6.1 Modern Life 2020-2025",
+        exp_6_1_title: "6.1 Surviving 2020-2025",
         exp_6_1_desc: "A modern remake of the classic trading game! Play as a young person in early 2020, trade trending items across cities, pay off your mortgage, and achieve financial freedom in 72 months. Full of era-specific references!",
         exp_6_1_hl_val: "8 Cities / 17 Items / Random Events / CN & DE Languages",
-        exp_6_1_nav: "6.1 Modern Life",
+        exp_6_1_nav: "6.1 Surviving",
     },
     de: {
         app_title: "10.000 Warums · Immersives Wissenschaftslexikon",
@@ -999,10 +999,10 @@ const translations = {
         ch6_title: "Immersives Lernen durch Spielen",
         ch6_intro: "Lerne Wirtschaft, Geschichte und soziale Dynamik durch Gamification - Wissen erwerben mit Spaß.",
         exp_6_1_bread: "Start › Spiele › Exp 6.1",
-        exp_6_1_title: "6.1 Surviving in Germany 2020-2025",
+        exp_6_1_title: "6.1 Surviving 2020-2025",
         exp_6_1_desc: "Überlebe in Deutschland! Starte 2020, handle mit trendigen Waren zwischen Städten, zahle deine Hypothek ab und erreiche finanzielle Freiheit in 72 Monaten. Mit deutschen Elementen: Döner, Pfandflaschen, DB Verspätungen, Berghain...",
         exp_6_1_hl_val: "8 Städte / 18 Waren / Zufallsereignisse / DE & CN Sprachen",
-        exp_6_1_nav: "6.1 Surviving in Germany",
+        exp_6_1_nav: "6.1 Surviving",
     }
 };
 
