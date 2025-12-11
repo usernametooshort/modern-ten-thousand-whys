@@ -332,8 +332,8 @@ const translations = {
         ch6_intro: "通过游戏化的方式学习经济、历史与社会运转规律，在娱乐中获取知识。",
         exp_6_1_bread: "首页 › 游戏篇 › 体验 6.1",
         exp_6_1_title: "6.1 现代浮生记 2020-2025",
-        exp_6_1_desc: "经典《北京浮生记》的现代重制版！扮演一个2020年初的年轻人，在72个月内通过倒买倒卖热门商品，还清房贷，实现财务自由。充满时代梗：口罩、NFT、ChatGPT、黑神话...",
-        exp_6_1_hl_val: "8大城市 / 17种商品 / 随机事件 / 支持中德双语",
+        exp_6_1_desc: "经典《北京浮生记》现代重制版！扮演2020年的年轻人，在8大城市间倒买倒卖28种时代热门商品——从口罩、NFT到ChatGPT账号、黑神话周边、小米SU7。应对封控、大厂裁员、AI革命等20+随机事件，管理健康与心情，72个月内还清房贷，实现财务自由！",
+        exp_6_1_hl_val: "8大城市 / 28种商品 / 20+随机事件 / 健康心情系统 / 中德双语",
         exp_6_1_nav: "6.1 现代浮生记",
     },
     en: {
@@ -666,8 +666,8 @@ const translations = {
         ch6_intro: "Learn economics, history and social dynamics through gamification, gaining knowledge while having fun.",
         exp_6_1_bread: "Home › Games › Exp 6.1",
         exp_6_1_title: "6.1 Surviving 2020-2025",
-        exp_6_1_desc: "A modern remake of the classic trading game! Play as a young person in early 2020, trade trending items across cities, pay off your mortgage, and achieve financial freedom in 72 months. Full of era-specific references!",
-        exp_6_1_hl_val: "8 Cities / 17 Items / Random Events / CN & DE Languages",
+        exp_6_1_desc: "A modern remake of the classic trading game! Play as a young person in 2020, trade 28 trending items across 8 cities—from masks and NFTs to ChatGPT accounts and Xiaomi SU7. Navigate 20+ random events like lockdowns, tech layoffs, and AI revolutions. Manage your health & mood, pay off your mortgage, and achieve financial freedom in 72 months!",
+        exp_6_1_hl_val: "8 Cities / 28 Items / 20+ Events / Health & Mood System / CN & DE",
         exp_6_1_nav: "6.1 Surviving",
     },
     de: {
@@ -1000,8 +1000,8 @@ const translations = {
         ch6_intro: "Lerne Wirtschaft, Geschichte und soziale Dynamik durch Gamification - Wissen erwerben mit Spaß.",
         exp_6_1_bread: "Start › Spiele › Exp 6.1",
         exp_6_1_title: "6.1 Surviving 2020-2025",
-        exp_6_1_desc: "Überlebe in Deutschland! Starte 2020, handle mit trendigen Waren zwischen Städten, zahle deine Hypothek ab und erreiche finanzielle Freiheit in 72 Monaten. Mit deutschen Elementen: Döner, Pfandflaschen, DB Verspätungen, Berghain...",
-        exp_6_1_hl_val: "8 Städte / 18 Waren / Zufallsereignisse / DE & CN Sprachen",
+        exp_6_1_desc: "Überlebe in Deutschland! Starte 2020, handle mit 28 trendigen Waren in 8 Städten—von Pfandflaschen und Döner bis zu ChatGPT-Accounts und E-Autos. Meistere 20+ Zufallsereignisse wie Corona-Lockdown, Energiekrise und KI-Boom. Manage Gesundheit & Stimmung, zahle deine Hypothek ab und erreiche finanzielle Freiheit in 72 Monaten!",
+        exp_6_1_hl_val: "8 Städte / 28 Waren / 20+ Events / Gesundheit & Stimmung / DE & CN",
         exp_6_1_nav: "6.1 Surviving",
     }
 };
