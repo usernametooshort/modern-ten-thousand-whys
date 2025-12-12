@@ -1253,6 +1253,47 @@ function setupWritingCanvas() {
     canvas.addEventListener('touchcancel', handleTouchEnd);
 }
 
+function syncTrainingCanvasSizes() {
+    const writingCanvas = elements.writingCanvas;
+    if (!writingCanvas) return false;
+    const container = writingCanvas.parentElement;
+    if (!container) return false;
+
+    const rect = container.getBoundingClientRect();
+    const w = Math.floor(rect.width);
+    const h = Math.floor(rect.height);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w < 10 || h < 10) return false;
+
+    writingCanvas.width = w;
+    writingCanvas.height = h;
+    state.canvasWidth = w;
+    state.canvasHeight = h;
+
+    if (elements.trackingCanvas) {
+        elements.trackingCanvas.width = w;
+        elements.trackingCanvas.height = h;
+    }
+    if (elements.strokeGuideCanvas) {
+        elements.strokeGuideCanvas.width = w;
+        elements.strokeGuideCanvas.height = h;
+    }
+    return true;
+}
+
+function ensureTrainingCanvasSizesSoon() {
+    // When the screen was hidden (display:none), initial measurements are 0.
+    // After showing the screen, we retry for a few frames until layout is ready.
+    let tries = 0;
+    const maxTries = 40; // ~0.6s at 60fps
+    const tick = () => {
+        if (syncTrainingCanvasSizes()) return;
+        tries++;
+        if (tries >= maxTries) return;
+        requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
+
 // ============================================
 // Input Handlers
 // ============================================
@@ -1573,8 +1614,15 @@ function matchStrokeType(strokeInfo, expectedStroke) {
             return naPass;
             
         case 'dian': // 点 - Dot (short stroke, usually downward)
-            // Short stroke, any direction mostly downward
-            const dianPass = length < 100 || goingDown;
+            // Dot is compact: small bounding box. Camera jitter can inflate "length",
+            // so use bbox size primarily + allow a short downward flick.
+            const w = Math.abs(strokeInfo.width || 0);
+            const h = Math.abs(strokeInfo.height || 0);
+            const maxDim = Math.max(w, h);
+            const compact = maxDim < 75 && (w < 65 && h < 65);
+            const shortish = length < 160 && maxDim < 110;
+            const downwardFlick = goingDown && length < 240 && absDx < 90 && absDy < 160;
+            const dianPass = compact || shortish || downwardFlick;
             console.log('点 判断:', dianPass ? '✓' : '✗');
             return dianPass;
             
@@ -2132,6 +2180,8 @@ function showScreen(screen) {
             break;
         case 'training':
             elements.trainingScreen?.classList.remove('hidden');
+            // Ensure canvases get correct size now that the screen is visible
+            ensureTrainingCanvasSizesSoon();
             break;
     }
 }
@@ -2383,7 +2433,8 @@ function checkTutorialStroke(strokeInfo, expectedType) {
         case 'na':
             return angle >= 0 && angle <= 90;
         case 'dian':
-            return length < 150;
+            // Dot: compact bbox; allow slightly longer path due to jitter
+            return Math.max(strokeInfo.width || 0, strokeInfo.height || 0) < 90 || length < 220;
         default:
             return false;
     }
