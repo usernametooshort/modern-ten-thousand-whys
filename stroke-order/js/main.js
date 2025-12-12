@@ -134,6 +134,52 @@ function rand(min, max) {
     return min + Math.random() * (max - min);
 }
 
+function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+}
+
+function easeOutExpo(t) {
+    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
+
+function kickCinematicShake({ durationMs = 900, peakPx = 22, peakRotDeg = 2.2 } = {}) {
+    const el = document.querySelector('.game-container') || document.body;
+    if (!el) return;
+
+    const start = performance.now();
+    const base = {
+        transform: el.style.transform || '',
+        filter: el.style.filter || ''
+    };
+
+    const raf = (t) => {
+        const p = (t - start) / durationMs;
+        if (p >= 1) {
+            el.style.transform = base.transform;
+            el.style.filter = base.filter;
+            return;
+        }
+
+        // Decay curve: sharp start, long tail
+        const k = 1 - easeOutExpo(p);
+        // Higher-frequency jitter at the beginning, softer later
+        const freq = p < 0.25 ? 32 : 18;
+        const n1 = Math.sin((t / 1000) * freq * 2.0 * Math.PI) + (Math.random() - 0.5) * 0.8;
+        const n2 = Math.cos((t / 1000) * (freq * 1.3) * 2.0 * Math.PI) + (Math.random() - 0.5) * 0.8;
+
+        const dx = n1 * peakPx * k;
+        const dy = n2 * peakPx * k * 0.7;
+        const rot = (Math.random() - 0.5) * peakRotDeg * k;
+
+        el.style.transform = `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) rotate(${rot.toFixed(2)}deg)`;
+        el.style.filter = `contrast(${(1 + 0.12 * k).toFixed(3)}) saturate(${(1 + 0.22 * k).toFixed(3)})`;
+
+        requestAnimationFrame(raf);
+    };
+
+    requestAnimationFrame(raf);
+}
+
 // ============================================
 // Translations
 // ============================================
@@ -1054,6 +1100,82 @@ function playExplosionSfx() {
     }
 }
 
+function playExplosionSfxCinematic() {
+    // Deeper, more cinematic: rumble + crack + ring tail
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ac = new AudioCtx();
+        const now = ac.currentTime;
+
+        // Master gain
+        const master = ac.createGain();
+        master.gain.setValueAtTime(0.9, now);
+        master.connect(ac.destination);
+
+        // Rumble (two oscillators)
+        const rum1 = ac.createOscillator();
+        rum1.type = 'sine';
+        rum1.frequency.setValueAtTime(58, now);
+        rum1.frequency.exponentialRampToValueAtTime(24, now + 0.45);
+        const rum2 = ac.createOscillator();
+        rum2.type = 'triangle';
+        rum2.frequency.setValueAtTime(42, now);
+        rum2.frequency.exponentialRampToValueAtTime(18, now + 0.55);
+
+        const rumGain = ac.createGain();
+        rumGain.gain.setValueAtTime(0.0001, now);
+        rumGain.gain.exponentialRampToValueAtTime(0.85, now + 0.02);
+        rumGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+        rum1.connect(rumGain);
+        rum2.connect(rumGain);
+        rumGain.connect(master);
+        rum1.start(now);
+        rum2.start(now);
+        rum1.stop(now + 0.8);
+        rum2.stop(now + 0.9);
+
+        // Crack (bandpassed noise)
+        const crackLen = Math.floor(ac.sampleRate * 0.18);
+        const crackBuf = ac.createBuffer(1, crackLen, ac.sampleRate);
+        const crack = crackBuf.getChannelData(0);
+        for (let i = 0; i < crackLen; i++) {
+            const t = i / crackLen;
+            crack[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 4);
+        }
+        const crackSrc = ac.createBufferSource();
+        crackSrc.buffer = crackBuf;
+        const bp = ac.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1600, now);
+        bp.Q.setValueAtTime(1.0, now);
+        const crackGain = ac.createGain();
+        crackGain.gain.setValueAtTime(0.0001, now);
+        crackGain.gain.exponentialRampToValueAtTime(0.7, now + 0.008);
+        crackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+        crackSrc.connect(bp).connect(crackGain).connect(master);
+        crackSrc.start(now);
+        crackSrc.stop(now + 0.2);
+
+        // Ring tail (high sine with subtle vibrato)
+        const ring = ac.createOscillator();
+        ring.type = 'sine';
+        ring.frequency.setValueAtTime(880, now + 0.03);
+        ring.frequency.exponentialRampToValueAtTime(520, now + 0.6);
+        const ringGain = ac.createGain();
+        ringGain.gain.setValueAtTime(0.0001, now);
+        ringGain.gain.exponentialRampToValueAtTime(0.18, now + 0.06);
+        ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+        ring.connect(ringGain).connect(master);
+        ring.start(now + 0.03);
+        ring.stop(now + 0.95);
+
+        setTimeout(() => ac.close().catch(() => {}), 1600);
+    } catch (e) {
+        // ignore
+    }
+}
+
 function playExtinguishSfx() {
     // Hiss / steam: filtered noise + quick decay
     try {
@@ -1090,6 +1212,58 @@ function playExtinguishSfx() {
         setTimeout(() => {
             ac.close().catch(() => {});
         }, 900);
+    } catch (e) {
+        // ignore
+    }
+}
+
+function playExtinguishSfxCinematic() {
+    // Stronger hiss + bubbly tail (best-effort)
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ac = new AudioCtx();
+        const now = ac.currentTime;
+
+        const master = ac.createGain();
+        master.gain.setValueAtTime(0.9, now);
+        master.connect(ac.destination);
+
+        // Steam hiss (noise -> lowpass)
+        const nLen = Math.floor(ac.sampleRate * 0.65);
+        const buf = ac.createBuffer(1, nLen, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < nLen; i++) {
+            const t = i / nLen;
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.6) * 0.9;
+        }
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const lp = ac.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(2400, now);
+        lp.frequency.exponentialRampToValueAtTime(650, now + 0.6);
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.55, now + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+        src.connect(lp).connect(g).connect(master);
+        src.start(now);
+        src.stop(now + 0.68);
+
+        // Bubble tail (low sine pulses)
+        const bub = ac.createOscillator();
+        bub.type = 'sine';
+        bub.frequency.setValueAtTime(120, now + 0.1);
+        const bg = ac.createGain();
+        bg.gain.setValueAtTime(0.0001, now);
+        bg.gain.exponentialRampToValueAtTime(0.18, now + 0.12);
+        bg.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+        bub.connect(bg).connect(master);
+        bub.start(now + 0.1);
+        bub.stop(now + 0.95);
+
+        setTimeout(() => ac.close().catch(() => {}), 1800);
     } catch (e) {
         // ignore
     }
@@ -1228,6 +1402,395 @@ function startExplosionFx(screenX, screenY) {
             return;
         }
 
+        fx.raf = requestAnimationFrame(draw);
+    };
+
+    if (fx.raf) cancelAnimationFrame(fx.raf);
+    fx.raf = requestAnimationFrame(draw);
+}
+
+function startCinematicExplosionFx(screenX, screenY) {
+    // Re-designed: denser sparks + embers + debris + thick smoke + bigger shockwave
+    const fx = state.fx;
+    if (!fx.canvas || !fx.ctx) return;
+
+    fx.canvas.classList.add('active');
+    fx.origin.x = screenX;
+    fx.origin.y = screenY;
+    fx.startTime = performance.now();
+    fx.lastTime = fx.startTime;
+
+    const ctx = fx.ctx;
+
+    const sparks = [];
+    const embers = [];
+    const debris = [];
+    const smoke = [];
+
+    const sparkCount = 260;
+    for (let i = 0; i < sparkCount; i++) {
+        const ang = rand(0, Math.PI * 2);
+        const spd = rand(680, 1550);
+        sparks.push({
+            x: screenX + rand(-6, 6),
+            y: screenY + rand(-6, 6),
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - rand(0, 220),
+            life: rand(0.22, 0.9),
+            age: 0,
+            w: rand(1.0, 3.2),
+            hue: rand(18, 48)
+        });
+    }
+
+    const emberCount = 90;
+    for (let i = 0; i < emberCount; i++) {
+        const ang = rand(0, Math.PI * 2);
+        const spd = rand(180, 520);
+        embers.push({
+            x: screenX + rand(-8, 8),
+            y: screenY + rand(-8, 8),
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - rand(0, 160),
+            life: rand(0.9, 1.8),
+            age: 0,
+            r: rand(2.0, 6.5),
+            hue: rand(20, 55)
+        });
+    }
+
+    const debrisCount = 36;
+    for (let i = 0; i < debrisCount; i++) {
+        const ang = rand(0, Math.PI * 2);
+        const spd = rand(320, 820);
+        debris.push({
+            x: screenX + rand(-10, 10),
+            y: screenY + rand(-10, 10),
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - rand(0, 240),
+            life: rand(0.7, 1.6),
+            age: 0,
+            w: rand(4, 14),
+            h: rand(2, 10),
+            rot: rand(0, Math.PI * 2),
+            vr: rand(-12, 12)
+        });
+    }
+
+    const smokeCount = 120;
+    for (let i = 0; i < smokeCount; i++) {
+        smoke.push({
+            x: screenX + rand(-26, 26),
+            y: screenY + rand(-22, 22),
+            vx: rand(-80, 80),
+            vy: rand(-280, -110),
+            life: rand(1.6, 3.4),
+            age: 0,
+            r: rand(24, 86),
+            a: rand(0.22, 0.48)
+        });
+    }
+
+    const draw = (t) => {
+        const dt = Math.min(0.033, Math.max(0.001, (t - fx.lastTime) / 1000));
+        fx.lastTime = t;
+        const p = (t - fx.startTime) / 1000;
+
+        // motion blur clear
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(0, 0, fx.w, fx.h);
+
+        // Big flash + hot core
+        if (p < 0.16) {
+            const a = 1 - (p / 0.16);
+            const g = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 520);
+            g.addColorStop(0, `rgba(255,255,255,${0.98 * a})`);
+            g.addColorStop(0.08, `rgba(255,240,210,${0.92 * a})`);
+            g.addColorStop(0.22, `rgba(255,190,110,${0.65 * a})`);
+            g.addColorStop(0.55, `rgba(255,70,20,${0.22 * a})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, fx.w, fx.h);
+        }
+
+        // Shockwave rings
+        const ringT = clamp((p - 0.02) / 1.05, 0, 1);
+        if (ringT > 0 && ringT < 1) {
+            const r = ringT * 860;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.strokeStyle = `rgba(255,210,150,${0.32 * (1 - ringT)})`;
+            ctx.lineWidth = 14 * (1 - ringT) + 2;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Sparks (streaks)
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of sparks) {
+            s.age += dt;
+            if (s.age > s.life) continue;
+            s.vx *= 0.982;
+            s.vy = s.vy * 0.982 + 980 * dt;
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+            const k = 1 - (s.age / s.life);
+            const a = 0.9 * k;
+            ctx.strokeStyle = `hsla(${s.hue}, 100%, 62%, ${a})`;
+            ctx.lineWidth = s.w;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x - s.vx * dt * 0.085, s.y - s.vy * dt * 0.085);
+            ctx.stroke();
+        }
+
+        // Embers (glowing dots)
+        for (const e of embers) {
+            e.age += dt;
+            if (e.age > e.life) continue;
+            e.vx *= 0.987;
+            e.vy = e.vy * 0.987 + 980 * dt * 0.6;
+            e.x += e.vx * dt;
+            e.y += e.vy * dt;
+            const k = 1 - (e.age / e.life);
+            const a = 0.55 * k;
+            const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r * 5);
+            g.addColorStop(0, `hsla(${e.hue}, 100%, 65%, ${a})`);
+            g.addColorStop(0.4, `hsla(${e.hue}, 100%, 55%, ${a * 0.35})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r * 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Debris (dark chunks)
+        ctx.globalCompositeOperation = 'source-over';
+        for (const d of debris) {
+            d.age += dt;
+            if (d.age > d.life) continue;
+            d.vx *= 0.99;
+            d.vy = d.vy * 0.99 + 980 * dt;
+            d.x += d.vx * dt;
+            d.y += d.vy * dt;
+            d.rot += d.vr * dt;
+            const k = 1 - (d.age / d.life);
+            ctx.save();
+            ctx.translate(d.x, d.y);
+            ctx.rotate(d.rot);
+            ctx.fillStyle = `rgba(15, 15, 15, ${0.85 * k})`;
+            ctx.fillRect(-d.w / 2, -d.h / 2, d.w, d.h);
+            ctx.restore();
+        }
+
+        // Smoke (thick, rising)
+        for (const m of smoke) {
+            m.age += dt;
+            if (m.age > m.life) continue;
+            m.vx *= 0.992;
+            m.vy *= 0.992;
+            m.x += m.vx * dt;
+            m.y += m.vy * dt;
+            const k = 1 - (m.age / m.life);
+            const r = m.r * (1 + (1 - k) * 1.8);
+            const a = m.a * k;
+            const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+            g.addColorStop(0, `rgba(30,30,30,${a})`);
+            g.addColorStop(0.55, `rgba(15,15,15,${a * 0.7})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (p > 3.2) {
+            fx.canvas.classList.remove('active');
+            ctx.clearRect(0, 0, fx.w, fx.h);
+            fx.raf = null;
+            return;
+        }
+        fx.raf = requestAnimationFrame(draw);
+    };
+
+    if (fx.raf) cancelAnimationFrame(fx.raf);
+    fx.raf = requestAnimationFrame(draw);
+}
+
+function startCinematicExtinguishFx(fromX, fromY, toX, toY) {
+    // Water jet + splash + mist + steam
+    const fx = state.fx;
+    if (!fx.canvas || !fx.ctx) return;
+    fx.canvas.classList.add('active');
+
+    fx.startTime = performance.now();
+    fx.lastTime = fx.startTime;
+    const ctx = fx.ctx;
+
+    const drops = [];
+    const mist = [];
+    const steam = [];
+    const ripples = [];
+
+    // pre-seed ripples
+    for (let i = 0; i < 3; i++) {
+        ripples.push({ age: i * 0.12, life: 0.9, r: 30 });
+    }
+
+    const draw = (t) => {
+        const dt = Math.min(0.033, Math.max(0.001, (t - fx.lastTime) / 1000));
+        fx.lastTime = t;
+        const p = (t - fx.startTime) / 1000;
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.10)';
+        ctx.fillRect(0, 0, fx.w, fx.h);
+
+        // Emit water droplets along the jet (first 1.1s)
+        if (p < 1.1) {
+            const emit = 90;
+            for (let i = 0; i < emit; i++) {
+                const u = Math.random();
+                const x = fromX + (toX - fromX) * u + rand(-12, 12);
+                const y = fromY + (toY - fromY) * u + rand(-12, 12);
+                drops.push({
+                    x, y,
+                    vx: rand(-60, 60),
+                    vy: rand(40, 140),
+                    life: rand(0.35, 0.75),
+                    age: 0,
+                    r: rand(1.2, 2.8)
+                });
+            }
+        }
+
+        // Impact spray near target (first 0.9s)
+        if (p < 0.9) {
+            const emit = 26;
+            for (let i = 0; i < emit; i++) {
+                const ang = rand(-Math.PI, 0);
+                const spd = rand(220, 620);
+                drops.push({
+                    x: toX + rand(-8, 8),
+                    y: toY + rand(-8, 8),
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    life: rand(0.25, 0.6),
+                    age: 0,
+                    r: rand(1.3, 3.5)
+                });
+            }
+            // mist puffs
+            for (let i = 0; i < 6; i++) {
+                mist.push({
+                    x: toX + rand(-22, 22),
+                    y: toY + rand(-16, 16),
+                    vx: rand(-70, 70),
+                    vy: rand(-150, -60),
+                    life: rand(0.6, 1.2),
+                    age: 0,
+                    r: rand(20, 55),
+                    a: rand(0.08, 0.18)
+                });
+            }
+        }
+
+        // steam rises after impact
+        if (p > 0.25 && p < 1.8) {
+            if (Math.random() > 0.4) {
+                steam.push({
+                    x: toX + rand(-26, 26),
+                    y: toY + rand(-10, 10),
+                    vx: rand(-30, 30),
+                    vy: rand(-120, -60),
+                    life: rand(0.9, 1.8),
+                    age: 0,
+                    r: rand(18, 46),
+                    a: rand(0.10, 0.22)
+                });
+            }
+        }
+
+        // draw droplets
+        ctx.globalCompositeOperation = 'lighter';
+        for (const d of drops) {
+            d.age += dt;
+            if (d.age > d.life) continue;
+            d.vx *= 0.992;
+            d.vy = d.vy * 0.992 + 980 * dt * 0.8;
+            d.x += d.vx * dt;
+            d.y += d.vy * dt;
+            const k = 1 - d.age / d.life;
+            const g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 6);
+            g.addColorStop(0, `rgba(230,255,255,${0.35 * k})`);
+            g.addColorStop(0.35, `rgba(120,220,255,${0.22 * k})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(d.x, d.y, d.r * 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // draw mist + steam (soft)
+        ctx.globalCompositeOperation = 'source-over';
+        for (const m of mist) {
+            m.age += dt;
+            if (m.age > m.life) continue;
+            m.x += m.vx * dt;
+            m.y += m.vy * dt;
+            const k = 1 - m.age / m.life;
+            const r = m.r * (1 + (1 - k) * 1.2);
+            const a = m.a * k;
+            const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+            g.addColorStop(0, `rgba(180,240,255,${a})`);
+            g.addColorStop(0.55, `rgba(120,210,255,${a * 0.55})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        for (const s of steam) {
+            s.age += dt;
+            if (s.age > s.life) continue;
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+            const k = 1 - s.age / s.life;
+            const r = s.r * (1 + (1 - k) * 1.6);
+            const a = s.a * k;
+            const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
+            g.addColorStop(0, `rgba(255,255,255,${a})`);
+            g.addColorStop(0.55, `rgba(220,220,220,${a * 0.55})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ripples
+        for (const r of ripples) {
+            r.age += dt;
+            if (r.age > r.life) continue;
+            const tt = r.age / r.life;
+            const rr = (30 + tt * 180);
+            ctx.strokeStyle = `rgba(140,220,255,${0.25 * (1 - tt)})`;
+            ctx.lineWidth = 3 * (1 - tt) + 0.6;
+            ctx.beginPath();
+            ctx.arc(toX, toY + 50, rr, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        if (p > 2.4) {
+            fx.canvas.classList.remove('active');
+            ctx.clearRect(0, 0, fx.w, fx.h);
+            fx.raf = null;
+            return;
+        }
         fx.raf = requestAnimationFrame(draw);
     };
 
@@ -1897,121 +2460,38 @@ function pourWater() {
     if (elements.bucket) {
         elements.bucket.classList.add('pouring');
     }
-    
-    // Create water stream (richer look: strands + shimmer)
-    if (bucketContainer) {
-        const waterStream = document.createElement('div');
-        waterStream.className = 'water-stream';
-        
-        // Add multiple strands to simulate breakup of water column
-        for (let i = 0; i < 6; i++) {
-            const strand = document.createElement('div');
-            strand.className = 'water-strand';
-            strand.style.setProperty('--w', (6 + Math.random() * 10).toFixed(1) + 'px');
-            strand.style.setProperty('--h', (210 + Math.random() * 120).toFixed(0) + 'px');
-            strand.style.left = (40 + Math.random() * 20).toFixed(0) + '%';
-            strand.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
-            waterStream.appendChild(strand);
-        }
 
-        bucketContainer.appendChild(waterStream);
-        
-        setTimeout(() => waterStream.remove(), 1900);
+    // Cinematic extinguish (canvas FX): compute emitter points from DOM
+    try {
+        const bucketRect = bucketContainer?.getBoundingClientRect?.();
+        const bombRect = elements.bombContainer?.getBoundingClientRect?.() || bombContainer?.getBoundingClientRect?.();
+        if (bucketRect && bombRect) {
+            const fromX = bucketRect.left + bucketRect.width * 0.55;
+            const fromY = bucketRect.top + bucketRect.height * 0.85;
+            const toX = bombRect.left + bombRect.width * 0.5;
+            const toY = bombRect.top + bombRect.height * 0.45;
+            startCinematicExtinguishFx(fromX, fromY, toX, toY);
+        }
+    } catch (e) {
+        // ignore
     }
-    
-    // After delay, show splash on bomb
+
+    // Wet look immediately
+    if (elements.bomb) {
+        elements.bomb.classList.add('wet');
+    }
+
+    // Extinguish fuse/bomb a moment after impact begins
     setTimeout(() => {
-        if (bombContainer) {
-            // Wet look immediately when water hits
-            if (elements.bomb) {
-                elements.bomb.classList.add('wet');
-            }
-
-            // Impact FX: spray + ripples + drips (more satisfying extinguish)
-            const impact = document.createElement('div');
-            impact.className = 'water-impact';
-            bombContainer.appendChild(impact);
-
-            const spray = document.createElement('div');
-            spray.className = 'water-spray';
-            for (let i = 0; i < 36; i++) {
-                const d = document.createElement('div');
-                d.className = 'spray-drop';
-                d.style.setProperty('--dx', ((Math.random() - 0.5) * 220).toFixed(0) + 'px');
-                d.style.setProperty('--dy', (-(60 + Math.random() * 140)).toFixed(0) + 'px');
-                d.style.animationDelay = (Math.random() * 0.08).toFixed(2) + 's';
-                d.style.width = (4 + Math.random() * 8).toFixed(1) + 'px';
-                d.style.height = d.style.width;
-                spray.appendChild(d);
-            }
-            impact.appendChild(spray);
-
-            for (let i = 0; i < 3; i++) {
-                const r = document.createElement('div');
-                r.className = 'water-ripple';
-                r.style.animationDelay = (i * 0.12).toFixed(2) + 's';
-                impact.appendChild(r);
-            }
-
-            // Dripping water after impact
-            const drips = document.createElement('div');
-            drips.className = 'bomb-drips';
-            for (let i = 0; i < 7; i++) {
-                const drip = document.createElement('div');
-                drip.className = 'bomb-drip';
-                drip.style.left = (35 + Math.random() * 30).toFixed(0) + '%';
-                drip.style.animationDelay = (0.08 + Math.random() * 0.35).toFixed(2) + 's';
-                drip.style.width = (4 + Math.random() * 6).toFixed(1) + 'px';
-                drips.appendChild(drip);
-            }
-            bombContainer.appendChild(drips);
-
-            // Create splash effect
-            const splash = document.createElement('div');
-            splash.className = 'water-splash';
-            for (let i = 0; i < 8; i++) {
-                const drop = document.createElement('div');
-                drop.className = 'splash-drop';
-                splash.appendChild(drop);
-            }
-            bombContainer.appendChild(splash);
-            
-            // Create steam effect
-            const steamContainer = document.createElement('div');
-            steamContainer.style.cssText = 'position: absolute; top: 0; left: 50%; transform: translateX(-50%);';
-            for (let i = 0; i < 10; i++) {
-                const steam = document.createElement('div');
-                steam.className = 'steam';
-                steamContainer.appendChild(steam);
-            }
-            bombContainer.appendChild(steamContainer);
-            
-            // Create puddle
-            const puddle = document.createElement('div');
-            puddle.className = 'water-puddle';
-            bombContainer.appendChild(puddle);
-            
-            // Extinguish the fuse/bomb (keep fuse element, switch to extinguished style)
-            if (elements.fuse) {
-                elements.fuse.classList.remove('burning');
-                elements.fuse.classList.add('extinguished');
-            }
-            if (elements.bomb) {
-                elements.bomb.classList.add('extinguished');
-            }
-
-            // Sound: steam hiss (best-effort)
-            playExtinguishSfx();
-            
-            // Clean up after animation
-            setTimeout(() => {
-                splash.remove();
-                steamContainer.remove();
-                impact.remove();
-                drips.remove();
-            }, 2500);
+        if (elements.fuse) {
+            elements.fuse.classList.remove('burning');
+            elements.fuse.classList.add('extinguished');
         }
-    }, 650);
+        if (elements.bomb) {
+            elements.bomb.classList.add('extinguished');
+        }
+        playExtinguishSfxCinematic();
+    }, 520);
     
     // Success flash - blue water effect
     const flash = document.createElement('div');
@@ -2090,21 +2570,7 @@ function explodeBomb() {
     }
     
     // ===== INTENSE SCREEN SHAKE =====
-    const gameContainer = document.querySelector('.game-container');
-    if (gameContainer) {
-        gameContainer.classList.add('explosion-shake');
-        gameContainer.classList.add('explosion-impact');
-        setTimeout(() => {
-            gameContainer.classList.remove('explosion-shake');
-            gameContainer.classList.remove('explosion-impact');
-        }, 1000);
-    }
-    
-    // Also shake the whole page
-    document.body.style.animation = 'screen-shake-intense 1s ease-out';
-    setTimeout(() => {
-        document.body.style.animation = '';
-    }, 1000);
+    kickCinematicShake({ durationMs: 980, peakPx: 26, peakRotDeg: 2.6 });
     
     // ===== SECONDARY FLASH =====
     setTimeout(() => {
@@ -2135,8 +2601,8 @@ function explodeBomb() {
         const rect = elements.bombContainer?.getBoundingClientRect?.();
         const cx = rect ? rect.left + rect.width / 2 : window.innerWidth * 0.75;
         const cy = rect ? rect.top + rect.height / 2 : window.innerHeight * 0.6;
-        startExplosionFx(cx, cy);
-        playExplosionSfx();
+        startCinematicExplosionFx(cx, cy);
+        playExplosionSfxCinematic();
     } catch (e) {
         // ignore
     }
@@ -2830,6 +3296,16 @@ function resetAnimations() {
     // Remove any leftover water FX nodes
     try {
         document.querySelectorAll('.water-stream, .water-impact, .bomb-drips, .water-splash, .water-puddle').forEach(n => n.remove());
+    } catch (e) {
+        // ignore
+    }
+
+    // Stop FX canvas animation cleanly
+    try {
+        if (state.fx?.raf) cancelAnimationFrame(state.fx.raf);
+        state.fx.raf = null;
+        if (state.fx?.canvas) state.fx.canvas.classList.remove('active');
+        if (state.fx?.ctx) state.fx.ctx.clearRect(0, 0, state.fx.w || 0, state.fx.h || 0);
     } catch (e) {
         // ignore
     }
