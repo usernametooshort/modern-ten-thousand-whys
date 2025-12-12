@@ -990,6 +990,47 @@ function playExplosionSfx() {
     }
 }
 
+function playExtinguishSfx() {
+    // Hiss / steam: filtered noise + quick decay
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ac = new AudioCtx();
+        const now = ac.currentTime;
+
+        const noiseLen = Math.floor(ac.sampleRate * 0.5);
+        const buffer = ac.createBuffer(1, noiseLen, ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < noiseLen; i++) {
+            const t = i / noiseLen;
+            // "steam" = softer noise, decays
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2) * 0.8;
+        }
+        const src = ac.createBufferSource();
+        src.buffer = buffer;
+
+        const lp = ac.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(1400, now);
+        lp.frequency.exponentialRampToValueAtTime(500, now + 0.45);
+
+        const gain = ac.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.35, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+        src.connect(lp).connect(gain).connect(ac.destination);
+        src.start(now);
+        src.stop(now + 0.5);
+
+        setTimeout(() => {
+            ac.close().catch(() => {});
+        }, 900);
+    } catch (e) {
+        // ignore
+    }
+}
+
 function startExplosionFx(screenX, screenY) {
     const fx = state.fx;
     if (!fx.canvas || !fx.ctx) return;
@@ -1741,18 +1782,74 @@ function pourWater() {
         elements.bucket.classList.add('pouring');
     }
     
-    // Create water stream
+    // Create water stream (richer look: strands + shimmer)
     if (bucketContainer) {
         const waterStream = document.createElement('div');
         waterStream.className = 'water-stream';
+        
+        // Add multiple strands to simulate breakup of water column
+        for (let i = 0; i < 6; i++) {
+            const strand = document.createElement('div');
+            strand.className = 'water-strand';
+            strand.style.setProperty('--w', (6 + Math.random() * 10).toFixed(1) + 'px');
+            strand.style.setProperty('--h', (210 + Math.random() * 120).toFixed(0) + 'px');
+            strand.style.left = (40 + Math.random() * 20).toFixed(0) + '%';
+            strand.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
+            waterStream.appendChild(strand);
+        }
+
         bucketContainer.appendChild(waterStream);
         
-        setTimeout(() => waterStream.remove(), 2000);
+        setTimeout(() => waterStream.remove(), 1900);
     }
     
     // After delay, show splash on bomb
     setTimeout(() => {
         if (bombContainer) {
+            // Wet look immediately when water hits
+            if (elements.bomb) {
+                elements.bomb.classList.add('wet');
+            }
+
+            // Impact FX: spray + ripples + drips (more satisfying extinguish)
+            const impact = document.createElement('div');
+            impact.className = 'water-impact';
+            bombContainer.appendChild(impact);
+
+            const spray = document.createElement('div');
+            spray.className = 'water-spray';
+            for (let i = 0; i < 36; i++) {
+                const d = document.createElement('div');
+                d.className = 'spray-drop';
+                d.style.setProperty('--dx', ((Math.random() - 0.5) * 220).toFixed(0) + 'px');
+                d.style.setProperty('--dy', (-(60 + Math.random() * 140)).toFixed(0) + 'px');
+                d.style.animationDelay = (Math.random() * 0.08).toFixed(2) + 's';
+                d.style.width = (4 + Math.random() * 8).toFixed(1) + 'px';
+                d.style.height = d.style.width;
+                spray.appendChild(d);
+            }
+            impact.appendChild(spray);
+
+            for (let i = 0; i < 3; i++) {
+                const r = document.createElement('div');
+                r.className = 'water-ripple';
+                r.style.animationDelay = (i * 0.12).toFixed(2) + 's';
+                impact.appendChild(r);
+            }
+
+            // Dripping water after impact
+            const drips = document.createElement('div');
+            drips.className = 'bomb-drips';
+            for (let i = 0; i < 7; i++) {
+                const drip = document.createElement('div');
+                drip.className = 'bomb-drip';
+                drip.style.left = (35 + Math.random() * 30).toFixed(0) + '%';
+                drip.style.animationDelay = (0.08 + Math.random() * 0.35).toFixed(2) + 's';
+                drip.style.width = (4 + Math.random() * 6).toFixed(1) + 'px';
+                drips.appendChild(drip);
+            }
+            bombContainer.appendChild(drips);
+
             // Create splash effect
             const splash = document.createElement('div');
             splash.className = 'water-splash';
@@ -1766,7 +1863,7 @@ function pourWater() {
             // Create steam effect
             const steamContainer = document.createElement('div');
             steamContainer.style.cssText = 'position: absolute; top: 0; left: 50%; transform: translateX(-50%);';
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 10; i++) {
                 const steam = document.createElement('div');
                 steam.className = 'steam';
                 steamContainer.appendChild(steam);
@@ -1778,21 +1875,27 @@ function pourWater() {
             puddle.className = 'water-puddle';
             bombContainer.appendChild(puddle);
             
-            // Extinguish the bomb
+            // Extinguish the fuse/bomb (keep fuse element, switch to extinguished style)
+            if (elements.fuse) {
+                elements.fuse.classList.remove('burning');
+                elements.fuse.classList.add('extinguished');
+            }
             if (elements.bomb) {
                 elements.bomb.classList.add('extinguished');
             }
-            if (elements.fuse) {
-                elements.fuse.style.display = 'none';
-            }
+
+            // Sound: steam hiss (best-effort)
+            playExtinguishSfx();
             
             // Clean up after animation
             setTimeout(() => {
                 splash.remove();
                 steamContainer.remove();
+                impact.remove();
+                drips.remove();
             }, 2500);
         }
-    }, 800);
+    }, 650);
     
     // Success flash - blue water effect
     const flash = document.createElement('div');
@@ -2566,10 +2669,11 @@ function resetAnimations() {
     if (elements.bomb) {
         elements.bomb.style.opacity = '1';
         elements.bomb.style.transform = '';
-        elements.bomb.classList.remove('extinguished', 'urgent');
+        elements.bomb.classList.remove('wet', 'extinguished', 'urgent');
     }
     if (elements.fuse) {
         elements.fuse.classList.remove('extinguished', 'burning');
+        elements.fuse.style.display = '';
     }
     if (elements.fuseLine) {
         elements.fuseLine.style.height = '100%';
@@ -2579,6 +2683,13 @@ function resetAnimations() {
     }
     if (elements.dangerText) {
         elements.dangerText.style.fontSize = '';
+    }
+
+    // Remove any leftover water FX nodes
+    try {
+        document.querySelectorAll('.water-stream, .water-impact, .bomb-drips, .water-splash, .water-puddle').forEach(n => n.remove());
+    } catch (e) {
+        // ignore
     }
     
     // Reset marks

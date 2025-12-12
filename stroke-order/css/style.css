@@ -1785,13 +1785,73 @@ body {
     transform: translateX(-50%);
     width: 60px;
     height: 0;
-    background: linear-gradient(180deg, 
-        rgba(100, 200, 255, 0.9) 0%,
-        rgba(50, 150, 255, 0.8) 50%,
-        rgba(30, 120, 255, 0.6) 100%);
+    /* Core body + shimmer highlights (more "real" water feel) */
+    background:
+        linear-gradient(180deg,
+            rgba(180, 245, 255, 0.85) 0%,
+            rgba(90, 200, 255, 0.75) 35%,
+            rgba(40, 140, 255, 0.55) 75%,
+            rgba(40, 140, 255, 0.35) 100%);
     border-radius: 0 0 30px 30px;
-    animation: water-pour 1.5s ease-in forwards;
+    animation: water-pour 1.5s ease-in forwards, water-wobble 0.35s ease-in-out infinite;
     overflow: visible;
+    filter: drop-shadow(0 10px 10px rgba(30, 120, 255, 0.25));
+}
+
+.water-stream::before {
+    /* Moving specular highlights */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse at 30% 15%,
+            rgba(255,255,255,0.8) 0%,
+            rgba(255,255,255,0.25) 28%,
+            transparent 60%),
+        linear-gradient(90deg,
+            transparent 0%,
+            rgba(255,255,255,0.22) 20%,
+            transparent 45%,
+            rgba(255,255,255,0.18) 70%,
+            transparent 100%);
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    border-radius: inherit;
+    animation: water-highlight 0.55s linear infinite;
+}
+
+.water-stream::after {
+    /* Subtle noisy texture movement */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        repeating-linear-gradient(105deg,
+            rgba(255,255,255,0.10) 0px,
+            rgba(255,255,255,0.10) 3px,
+            transparent 6px,
+            transparent 11px);
+    opacity: 0.25;
+    filter: blur(0.6px);
+    border-radius: inherit;
+    animation: water-texture 0.25s linear infinite;
+}
+
+.water-strand {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--w, 10px);
+    height: 0;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(180deg,
+        rgba(210, 255, 255, 0.8) 0%,
+        rgba(120, 220, 255, 0.7) 45%,
+        rgba(60, 160, 255, 0.4) 100%);
+    filter: blur(0.1px);
+    animation: strand-fall 1.25s ease-in forwards;
+    opacity: 0.9;
 }
 
 @keyframes water-pour {
@@ -1801,12 +1861,97 @@ body {
     100% { height: 300px; opacity: 0.8; }
 }
 
+@keyframes water-wobble {
+    0%, 100% { transform: translateX(-50%) skewX(0deg); }
+    50% { transform: translateX(-50%) skewX(-2deg); }
+}
+
+@keyframes water-highlight {
+    0% { transform: translateX(-10%); opacity: 0.7; }
+    50% { opacity: 0.85; }
+    100% { transform: translateX(10%); opacity: 0.7; }
+}
+
+@keyframes water-texture {
+    0% { background-position: 0 0; }
+    100% { background-position: 30px 50px; }
+}
+
+@keyframes strand-fall {
+    0% { height: 0; opacity: 0; }
+    10% { opacity: 0.9; }
+    70% { height: var(--h, 240px); opacity: 0.95; }
+    100% { height: calc(var(--h, 240px) + 80px); opacity: 0.0; }
+}
+
 /* Water splash on bomb */
 .water-splash {
     position: absolute;
     width: 150px;
     height: 80px;
     pointer-events: none;
+}
+
+.water-impact {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.water-spray {
+    position: absolute;
+    left: 50%;
+    top: 35%;
+    width: 200px;
+    height: 160px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    filter: drop-shadow(0 10px 12px rgba(120, 220, 255, 0.2));
+}
+
+.spray-drop {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(160, 230, 255, 0.75) 40%,
+        rgba(80, 170, 255, 0.25) 100%);
+    transform: translate(-50%, -50%);
+    animation: spray-fly 0.65s ease-out forwards;
+    opacity: 0.9;
+}
+
+@keyframes spray-fly {
+    0% { transform: translate(-50%, -50%) translate(0, 0) scale(0.7); opacity: 0; }
+    10% { opacity: 1; }
+    100% {
+        transform: translate(-50%, -50%) translate(var(--dx, 0px), var(--dy, -80px)) scale(0.2);
+        opacity: 0;
+    }
+}
+
+.water-ripple {
+    position: absolute;
+    left: 50%;
+    top: 72%;
+    width: 30px;
+    height: 30px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 2px solid rgba(160, 230, 255, 0.55);
+    box-shadow: 0 0 18px rgba(120, 220, 255, 0.25);
+    animation: ripple-expand 0.9s ease-out forwards;
+    opacity: 0.9;
+}
+
+@keyframes ripple-expand {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+    20% { opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) scale(4.8); opacity: 0; }
 }
 
 .splash-drop {
@@ -1878,6 +2023,61 @@ body {
 }
 
 /* Extinguished bomb state */
+.bomb.wet .bomb-body {
+    /* Wet sheen + darker metal */
+    background: radial-gradient(circle at 30% 30%,
+        #3e3e3e 0%,
+        #1f1f1f 70%,
+        #151515 100%);
+    box-shadow:
+        inset -6px -6px 12px rgba(0,0,0,0.45),
+        inset 6px 6px 12px rgba(255,255,255,0.06),
+        0 0 22px rgba(120, 220, 255, 0.15);
+}
+
+.bomb.wet .bomb-highlight {
+    opacity: 0.9;
+    filter: saturate(1.2) brightness(1.1);
+    animation: wet-shimmer 0.7s ease-in-out infinite;
+}
+
+@keyframes wet-shimmer {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.75; }
+    50% { transform: translateY(1px) scale(1.03); opacity: 0.95; }
+}
+
+.bomb-drips {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 140px;
+    pointer-events: none;
+}
+
+.bomb-drip {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 6px;
+    height: 16px;
+    border-radius: 999px;
+    background: linear-gradient(180deg,
+        rgba(255,255,255,0.75) 0%,
+        rgba(130, 220, 255, 0.55) 45%,
+        rgba(80, 170, 255, 0.15) 100%);
+    transform: translateX(-50%);
+    filter: blur(0.1px);
+    animation: drip-fall 0.9s ease-in forwards;
+}
+
+@keyframes drip-fall {
+    0% { transform: translateX(-50%) translateY(0) scaleY(0.6); opacity: 0; }
+    10% { opacity: 0.9; }
+    100% { transform: translateX(-50%) translateY(110px) scaleY(0.2); opacity: 0; }
+}
+
 .bomb.extinguished {
     filter: grayscale(0.5) brightness(0.7);
     animation: none !important;
