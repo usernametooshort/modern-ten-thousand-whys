@@ -73,7 +73,22 @@ const state = {
     
     // Dimensions
     canvasWidth: 0,
-    canvasHeight: 0
+    canvasHeight: 0,
+
+    // Fullscreen FX (explosion / shockwave / particles)
+    fx: {
+        canvas: null,
+        ctx: null,
+        dpr: 1,
+        w: 0,
+        h: 0,
+        raf: null,
+        startTime: 0,
+        lastTime: 0,
+        origin: { x: 0, y: 0 },
+        sparks: [],
+        smoke: []
+    }
 };
 
 // ============================================
@@ -110,6 +125,10 @@ function avgPoints(points) {
     }
     if (n === 0) return null;
     return [sx / n, sy / n];
+}
+
+function rand(min, max) {
+    return min + Math.random() * (max - min);
 }
 
 // ============================================
@@ -303,6 +322,7 @@ function initElements() {
         fuse: document.getElementById('fuse'),
         spark: document.getElementById('spark'),
         explosion: document.getElementById('explosion'),
+        fxCanvas: document.getElementById('fx-canvas'),
         tiltBar: document.getElementById('tilt-bar'),
         wrongMark: document.getElementById('wrong-mark'),
         
@@ -566,7 +586,7 @@ function onHandResults(results) {
         // Add to finger trail (always, for visual feedback)
         if (!isNaN(x) && !isNaN(y)) {
             state.fingerTrail.push({ x, y, time: Date.now(), isPinching });
-            if (state.fingerTrail.length > 30) {
+            if (state.fingerTrail.length > 80) {
                 state.fingerTrail.shift();
             }
         }
@@ -889,6 +909,225 @@ function initCanvases() {
     if (elements.characterCanvas) {
         state.characterCtx = elements.characterCanvas.getContext('2d');
     }
+
+    // Fullscreen FX canvas
+    initFxCanvas();
+}
+
+function initFxCanvas() {
+    const canvas = elements.fxCanvas;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    state.fx.canvas = canvas;
+    state.fx.ctx = ctx;
+
+    const resize = () => {
+        const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        state.fx.dpr = dpr;
+        state.fx.w = Math.floor(window.innerWidth);
+        state.fx.h = Math.floor(window.innerHeight);
+        canvas.width = Math.floor(state.fx.w * dpr);
+        canvas.height = Math.floor(state.fx.h * dpr);
+        canvas.style.width = state.fx.w + 'px';
+        canvas.style.height = state.fx.h + 'px';
+        if (ctx) {
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, state.fx.w, state.fx.h);
+        }
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+}
+
+function playExplosionSfx() {
+    // Best-effort: some browsers block audio until user interaction.
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ac = new AudioCtx();
+        const now = ac.currentTime;
+
+        // Rumble
+        const osc = ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(55, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + 0.35);
+        const rumbleGain = ac.createGain();
+        rumbleGain.gain.setValueAtTime(0.0001, now);
+        rumbleGain.gain.exponentialRampToValueAtTime(0.6, now + 0.02);
+        rumbleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+        osc.connect(rumbleGain).connect(ac.destination);
+        osc.start(now);
+        osc.stop(now + 0.65);
+
+        // Noise burst (spark / crack)
+        const noiseLen = Math.floor(ac.sampleRate * 0.25);
+        const buffer = ac.createBuffer(1, noiseLen, ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < noiseLen; i++) {
+            const t = i / noiseLen;
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
+        }
+        const noise = ac.createBufferSource();
+        noise.buffer = buffer;
+        const hp = ac.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.setValueAtTime(800, now);
+        const noiseGain = ac.createGain();
+        noiseGain.gain.setValueAtTime(0.0001, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.45, now + 0.01);
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+        noise.connect(hp).connect(noiseGain).connect(ac.destination);
+        noise.start(now);
+        noise.stop(now + 0.25);
+
+        setTimeout(() => {
+            ac.close().catch(() => {});
+        }, 1200);
+    } catch (e) {
+        // ignore
+    }
+}
+
+function startExplosionFx(screenX, screenY) {
+    const fx = state.fx;
+    if (!fx.canvas || !fx.ctx) return;
+
+    fx.canvas.classList.add('active');
+    fx.origin.x = screenX;
+    fx.origin.y = screenY;
+    fx.startTime = performance.now();
+    fx.lastTime = fx.startTime;
+    fx.sparks = [];
+    fx.smoke = [];
+
+    // Sparks
+    const sparkCount = 160;
+    for (let i = 0; i < sparkCount; i++) {
+        const ang = rand(0, Math.PI * 2);
+        const spd = rand(520, 980);
+        fx.sparks.push({
+            x: screenX + rand(-6, 6),
+            y: screenY + rand(-6, 6),
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - rand(0, 180),
+            life: rand(0.25, 0.75),
+            age: 0,
+            w: rand(1.0, 2.6),
+            hue: rand(22, 48)
+        });
+    }
+
+    // Smoke
+    const smokeCount = 70;
+    for (let i = 0; i < smokeCount; i++) {
+        fx.smoke.push({
+            x: screenX + rand(-30, 30),
+            y: screenY + rand(-20, 20),
+            vx: rand(-60, 60),
+            vy: rand(-220, -80),
+            life: rand(1.3, 2.6),
+            age: 0,
+            r: rand(18, 60),
+            a: rand(0.25, 0.45)
+        });
+    }
+
+    const ctx = fx.ctx;
+
+    const draw = (t) => {
+        const dt = Math.min(0.033, Math.max(0.001, (t - fx.lastTime) / 1000));
+        fx.lastTime = t;
+        const p = (t - fx.startTime) / 1000;
+
+        // Fade previous frame slightly (motion blur)
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+        ctx.fillRect(0, 0, fx.w, fx.h);
+
+        // Initial flash
+        if (p < 0.12) {
+            const a = 1 - (p / 0.12);
+            const g = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 360);
+            g.addColorStop(0, `rgba(255,255,255,${0.9 * a})`);
+            g.addColorStop(0.18, `rgba(255,210,120,${0.75 * a})`);
+            g.addColorStop(0.5, `rgba(255,80,20,${0.25 * a})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, fx.w, fx.h);
+        }
+
+        // Shockwave ring
+        const ringT = clamp((p - 0.03) / 0.75, 0, 1);
+        if (ringT > 0 && ringT < 1) {
+            const r = ringT * 620;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.strokeStyle = `rgba(255,200,120,${0.35 * (1 - ringT)})`;
+            ctx.lineWidth = 10 * (1 - ringT) + 2;
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Sparks
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of fx.sparks) {
+            s.age += dt;
+            if (s.age > s.life) continue;
+            s.vx *= 0.985;
+            s.vy = s.vy * 0.985 + 980 * dt;
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+
+            const k = 1 - (s.age / s.life);
+            const a = 0.75 * k;
+            ctx.strokeStyle = `hsla(${s.hue}, 100%, 60%, ${a})`;
+            ctx.lineWidth = s.w;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x - s.vx * dt * 0.06, s.y - s.vy * dt * 0.06);
+            ctx.stroke();
+        }
+
+        // Smoke
+        ctx.globalCompositeOperation = 'source-over';
+        for (const m of fx.smoke) {
+            m.age += dt;
+            if (m.age > m.life) continue;
+            m.vx *= 0.99;
+            m.vy *= 0.99;
+            m.x += m.vx * dt;
+            m.y += m.vy * dt;
+
+            const k = 1 - (m.age / m.life);
+            const r = m.r * (1 + (1 - k) * 1.6);
+            const a = m.a * k;
+            const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+            g.addColorStop(0, `rgba(40,40,40,${a})`);
+            g.addColorStop(0.6, `rgba(20,20,20,${a * 0.6})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (p > 2.6) {
+            fx.canvas.classList.remove('active');
+            ctx.clearRect(0, 0, fx.w, fx.h);
+            fx.raf = null;
+            return;
+        }
+
+        fx.raf = requestAnimationFrame(draw);
+    };
+
+    if (fx.raf) cancelAnimationFrame(fx.raf);
+    fx.raf = requestAnimationFrame(draw);
 }
 
 function setupWritingCanvas() {
@@ -1635,8 +1874,10 @@ function explodeBomb() {
     const gameContainer = document.querySelector('.game-container');
     if (gameContainer) {
         gameContainer.classList.add('explosion-shake');
+        gameContainer.classList.add('explosion-impact');
         setTimeout(() => {
             gameContainer.classList.remove('explosion-shake');
+            gameContainer.classList.remove('explosion-impact');
         }, 1000);
     }
     
@@ -1668,6 +1909,17 @@ function explodeBomb() {
     // ===== HEAVY VIBRATION =====
     if (navigator.vibrate) {
         navigator.vibrate([200, 50, 200, 50, 300, 100, 400]);
+    }
+
+    // ===== CINEMATIC PARTICLE FX + SOUND =====
+    try {
+        const rect = elements.bombContainer?.getBoundingClientRect?.();
+        const cx = rect ? rect.left + rect.width / 2 : window.innerWidth * 0.75;
+        const cy = rect ? rect.top + rect.height / 2 : window.innerHeight * 0.6;
+        startExplosionFx(cx, cy);
+        playExplosionSfx();
+    } catch (e) {
+        // ignore
     }
     
     // Add flash animation style if not exists

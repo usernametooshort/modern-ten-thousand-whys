@@ -931,6 +931,7 @@ body {
     height: 100%;
     object-fit: cover;
     transform: scaleX(-1); /* Mirror for natural writing */
+    z-index: 1;
 }
 
 #tracking-canvas, #writing-canvas {
@@ -939,6 +940,14 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
+}
+
+#writing-canvas {
+    z-index: 4; /* ink strokes */
+}
+
+#tracking-canvas {
+    z-index: 7; /* fingertip trail always visible (formal game too) */
 }
 
 #writing-canvas {
@@ -973,7 +982,7 @@ body {
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    z-index: 5;
+    z-index: 2; /* behind guides/ink/trail */
 }
 
 #trace-character {
@@ -995,7 +1004,27 @@ body {
     height: 100%;
     pointer-events: none;
     display: none; /* 正式测试不显示笔画引导线 */
-    z-index: 6;
+    z-index: 3; /* above tracing char, below ink/trail */
+}
+
+/* Fullscreen FX canvas */
+.fx-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9998;
+    display: none;
+}
+
+.fx-canvas.active {
+    display: block;
+}
+
+/* Extra impact look during explosion */
+.game-container.explosion-impact {
+    filter: contrast(1.12) saturate(1.25) brightness(0.95);
 }
 
 /* Correct mark animation */
