@@ -63,6 +63,8 @@ const state = {
     lastHandSeenAt: 0, // ms timestamp for last valid hand landmark frame
     calibPinchCount: 0,
     calibPinchFirstAt: 0,
+    calibPulseArmed: false,
+    calibLastPulseAt: 0,
     
     // MediaPipe
     hands: null,
@@ -706,24 +708,47 @@ function onHandResults(results) {
         if (state.inputMode === 'camera') {
             if (state.currentScreen === 'calibration') {
                 // Shortcut: after finger detected, pinch index+thumb twice to start training (no button click)
-                if (pinchJustStarted && elements.btnStartTraining && !elements.btnStartTraining.disabled) {
-                    const w = 1600;
-                    const tNow = nowMs;
-                    if (!state.calibPinchFirstAt || (tNow - state.calibPinchFirstAt) > w) {
-                        state.calibPinchFirstAt = tNow;
-                        state.calibPinchCount = 1;
-                    } else {
-                        state.calibPinchCount += 1;
-                    }
-
-                    // small UI hint update
+                // NOTE: Do NOT rely on drawing-state "release" (which is conservative). Use pulse detection on ratio.
+                if (elements.btnStartTraining && !elements.btnStartTraining.disabled) {
                     const desc = document.getElementById('calib-desc');
                     if (desc) desc.textContent = '检测到手指后：👌 连续捏合两次即可进入训练（无需点击按钮）';
 
-                    if (state.calibPinchCount >= 2) {
-                        state.calibPinchCount = 0;
-                        state.calibPinchFirstAt = 0;
-                        showScreen('tutorial');
+                    const CALIB_ENTER = 0.30; // easier trigger
+                    const CALIB_EXIT = 0.42;  // re-arm threshold
+                    const WINDOW_MS = 1800;
+                    const DEBOUNCE_MS = 220;
+
+                    const ratio = typeof state.pinchRatioEMA === 'number' ? state.pinchRatioEMA : 1;
+                    const tNow = nowMs;
+
+                    // Re-arm when clearly open
+                    if (state.calibPulseArmed && ratio > CALIB_EXIT) {
+                        state.calibPulseArmed = false;
+                    }
+
+                    // Count a pulse when crossing into pinch (and not too soon after last pulse)
+                    if (!state.calibPulseArmed && ratio < CALIB_ENTER) {
+                        if (!state.calibLastPulseAt || (tNow - state.calibLastPulseAt) > DEBOUNCE_MS) {
+                            state.calibLastPulseAt = tNow;
+                            state.calibPulseArmed = true;
+
+                            if (!state.calibPinchFirstAt || (tNow - state.calibPinchFirstAt) > WINDOW_MS) {
+                                state.calibPinchFirstAt = tNow;
+                                state.calibPinchCount = 1;
+                            } else {
+                                state.calibPinchCount += 1;
+                            }
+
+                            if (navigator.vibrate) navigator.vibrate(30);
+
+                            if (state.calibPinchCount >= 2) {
+                                state.calibPinchCount = 0;
+                                state.calibPinchFirstAt = 0;
+                                state.calibPulseArmed = false;
+                                state.calibLastPulseAt = 0;
+                                showScreen('tutorial');
+                            }
+                        }
                     }
                 }
             } else if (state.tutorialActive && state.currentScreen === 'tutorial') {
@@ -2361,6 +2386,18 @@ function showCorrectMark() {
 
 function handleWrongStroke() {
     state.wrongAttempts++;
+
+    // Difficulty impact (make HARD actually felt)
+    if (state.effectiveTimeLimit > 0) {
+        const penalty =
+            state.difficulty === 'hard' ? 3 :
+            state.difficulty === 'normal' ? 1 :
+            0;
+        if (penalty > 0) {
+            state.timeRemaining = Math.max(0, state.timeRemaining - penalty);
+            updateGameUI();
+        }
+    }
     
     // Show wrong mark
     showWrongMark();
