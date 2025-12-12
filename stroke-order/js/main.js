@@ -26,6 +26,7 @@ const state = {
     difficulty: 'easy',
     charSet: 'basic',
     timeLimit: 30,
+    effectiveTimeLimit: 30,
     
     // Current game
     currentChar: null,
@@ -60,6 +61,8 @@ const state = {
     handSize: 100, // Estimated hand size for adaptive threshold
     filteredIndexPoint: null, // Smoothed index fingertip in pixels
     lastHandSeenAt: 0, // ms timestamp for last valid hand landmark frame
+    calibPinchCount: 0,
+    calibPinchFirstAt: 0,
     
     // MediaPipe
     hands: null,
@@ -298,6 +301,18 @@ const T = {
 
 function t(key) {
     return T[state.language][key] || T.en[key] || key;
+}
+
+function computeEffectiveTimeLimit(baseSeconds) {
+    if (!baseSeconds || baseSeconds <= 0) return 0; // unlimited
+    // Make difficulty *feel* different even if timer is separately configurable:
+    // hard -> faster fuse, normal -> slightly faster, easy -> as configured.
+    const factor =
+        state.difficulty === 'hard' ? 0.75 :
+        state.difficulty === 'normal' ? 0.90 :
+        1.00;
+    const eff = Math.max(5, Math.round(baseSeconds * factor));
+    return eff;
 }
 
 // ============================================
@@ -635,6 +650,15 @@ function onHandResults(results) {
         }
         
         const isPinching = state.isPinching;
+
+        // Pinch transitions (used for drawing + calibration shortcuts)
+        let pinchJustStarted = false;
+        let pinchJustEnded = false;
+        if (state.inputMode === 'camera') {
+            pinchJustStarted = isPinching && !state.lastPinchState;
+            pinchJustEnded = !isPinching && state.lastPinchState;
+            state.lastPinchState = isPinching;
+        }
         
         // Calculate pixel distance for display
         const thumbX = (1 - thumbTip.x) * width;
@@ -678,14 +702,31 @@ function onHandResults(results) {
             }
         }
         
-        // Handle drawing based on current screen
+        // Handle camera gestures based on current screen
         if (state.inputMode === 'camera') {
-            // Detect pinch start/end transitions
-            const pinchJustStarted = isPinching && !state.lastPinchState;
-            const pinchJustEnded = !isPinching && state.lastPinchState;
-            state.lastPinchState = isPinching;
-            
-            if (state.tutorialActive && state.currentScreen === 'tutorial') {
+            if (state.currentScreen === 'calibration') {
+                // Shortcut: after finger detected, pinch index+thumb twice to start training (no button click)
+                if (pinchJustStarted && elements.btnStartTraining && !elements.btnStartTraining.disabled) {
+                    const w = 1600;
+                    const tNow = nowMs;
+                    if (!state.calibPinchFirstAt || (tNow - state.calibPinchFirstAt) > w) {
+                        state.calibPinchFirstAt = tNow;
+                        state.calibPinchCount = 1;
+                    } else {
+                        state.calibPinchCount += 1;
+                    }
+
+                    // small UI hint update
+                    const desc = document.getElementById('calib-desc');
+                    if (desc) desc.textContent = '检测到手指后：👌 连续捏合两次即可进入训练（无需点击按钮）';
+
+                    if (state.calibPinchCount >= 2) {
+                        state.calibPinchCount = 0;
+                        state.calibPinchFirstAt = 0;
+                        showScreen('tutorial');
+                    }
+                }
+            } else if (state.tutorialActive && state.currentScreen === 'tutorial') {
                 if (pinchJustStarted) {
                     startTutorialDrawing(x, y);
                 } else if (isPinching && state.isDrawing) {
@@ -3092,7 +3133,8 @@ function startGame(character = null) {
     state.currentStrokeIndex = 0;
     state.correctStrokes = 0;
     state.wrongAttempts = 0;
-    state.timeRemaining = state.timeLimit;
+    state.effectiveTimeLimit = computeEffectiveTimeLimit(state.timeLimit);
+    state.timeRemaining = state.effectiveTimeLimit;
     state.gameActive = true;
     
     // Update UI - both small display and embedded trace character
@@ -3133,7 +3175,7 @@ function startGame(character = null) {
     clearWritingCanvas();
     
     // Start timer
-    if (state.timeLimit > 0) {
+    if (state.effectiveTimeLimit > 0) {
         startTimer();
     }
     
@@ -3142,7 +3184,7 @@ function startGame(character = null) {
         // Remove and re-add burning class to restart animation
         elements.fuse.classList.remove('burning');
         void elements.fuse.offsetWidth; // Force reflow
-        elements.fuse.style.setProperty('--fuse-duration', state.timeLimit + 's');
+        elements.fuse.style.setProperty('--fuse-duration', state.effectiveTimeLimit + 's');
         elements.fuse.classList.add('burning');
     }
     
@@ -3245,7 +3287,7 @@ function startTimer() {
         updateGameUI();
         
         // Add urgency when time is low (less than 10 seconds or 30% remaining)
-        const urgencyThreshold = Math.min(10, state.timeLimit * 0.3);
+        const urgencyThreshold = Math.min(10, state.effectiveTimeLimit * 0.3);
         if (state.timeRemaining <= urgencyThreshold && state.timeRemaining > 0) {
             if (elements.bomb) {
                 elements.bomb.classList.add('urgent');
@@ -3340,7 +3382,8 @@ function showResult(success) {
     
     // Stats
     elements.resCharacter.textContent = state.currentChar.char;
-    elements.resTime.textContent = (state.timeLimit - state.timeRemaining) + '秒';
+    const used = (state.effectiveTimeLimit > 0 ? (state.effectiveTimeLimit - state.timeRemaining) : 0);
+    elements.resTime.textContent = used + '秒';
     
     const accuracy = state.currentChar.strokes.length > 0 
         ? Math.round((state.correctStrokes / state.currentChar.strokes.length) * 100) 

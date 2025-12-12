@@ -215,10 +215,13 @@
             <div class="animation-panel">
                 <div class="bucket-container">
                     <div class="bucket" id="bucket">
+                        <div class="bucket-rim"></div>
                         <div class="bucket-body">
                             <div class="water" id="water"></div>
+                            <div class="bucket-ribs" aria-hidden="true"></div>
                         </div>
                         <div class="bucket-handle"></div>
+                        <div class="bucket-grip" aria-hidden="true"></div>
                     </div>
                     <div class="water-drops hidden" id="water-drops">
                         <div class="drop"></div>
@@ -232,8 +235,21 @@
                     <div class="bomb" id="bomb">
                         <div class="bomb-body">
                             <div class="bomb-highlight"></div>
-                            <div class="bomb-skull">💀</div>
-                            <div class="bomb-warning">⚠️</div>
+                            <div class="bomb-rivets" aria-hidden="true"></div>
+                            <div class="bomb-hazard" aria-hidden="true">
+                                <svg viewBox="0 0 100 100" width="44" height="44" focusable="false" aria-hidden="true">
+                                    <defs>
+                                        <linearGradient id="hazG" x1="0" y1="0" x2="1" y2="1">
+                                            <stop offset="0" stop-color="#ffd66b"/>
+                                            <stop offset="1" stop-color="#ff9f1a"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="M50 6 L96 90 H4 Z" fill="url(#hazG)" stroke="rgba(0,0,0,0.65)" stroke-width="4" />
+                                    <path d="M50 22 C40 35, 52 42, 43 54 C35 65, 48 72, 39 82 C54 76, 66 67, 59 55 C52 44, 67 37, 50 22 Z"
+                                          fill="rgba(15,15,15,0.92)"/>
+                                    <rect x="46" y="70" width="8" height="8" rx="2" fill="rgba(15,15,15,0.92)"/>
+                                </svg>
+                            </div>
                         </div>
                         <div class="fuse" id="fuse">
                             <div class="fuse-line" id="fuse-line"></div>
@@ -248,7 +264,7 @@
                         <div class="bomb-glow"></div>
                     </div>
                     <!-- Danger warning -->
-                    <div class="danger-text" id="danger-text">💣 DANGER</div>
+                    <div class="danger-text" id="danger-text">DANGER</div>
                     
                     <div class="explosion hidden" id="explosion">
                         <!-- Fire particles -->
