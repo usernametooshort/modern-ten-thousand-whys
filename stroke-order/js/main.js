@@ -57,6 +57,7 @@ const state = {
     pinchReleaseFrames: 0, // Frames to confirm release
     pinchCooldownFrames: 0, // Small cooldown after state flip to prevent flapping
     pinchRatioEMA: null, // Smoothed pinch ratio (thumb-index distance / palm size)
+    pinchRatioFingerEMA: null, // Smoothed pinch ratio (thumb-index distance / index finger length)
     drawingTrail: [], // Persistent trail for current stroke
     handSize: 100, // Estimated hand size for adaptive threshold
     filteredIndexPoint: null, // Smoothed index fingertip in pixels
@@ -120,6 +121,19 @@ function safeLandmarkDist(a, b) {
     const dx = a.x - b.x;
     const dy = a.y - b.y;
     const d = Math.sqrt(dx * dx + dy * dy);
+    return Number.isFinite(d) ? d : null;
+}
+
+function safeLandmarkDist3(a, b, zWeight = 0.6) {
+    if (!a || !b) return null;
+    if (typeof a.x !== 'number' || typeof a.y !== 'number') return null;
+    if (typeof b.x !== 'number' || typeof b.y !== 'number') return null;
+    const az = (typeof a.z === 'number') ? a.z : 0;
+    const bz = (typeof b.z === 'number') ? b.z : 0;
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dz = (az - bz) * zWeight;
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     return Number.isFinite(d) ? d : null;
 }
 
@@ -591,36 +605,53 @@ function onHandResults(results) {
         state.fingerDetected = true;
         updateCalibrationStatus(true);
         
-        // ===== STABLE PINCH DETECTION (LESS FALSE POSITIVES) =====
-        // Use hand-relative scale: (thumb-index distance) / (palm width)
-        // This is more stable than using the whole screen size.
-        const pinchDistanceNorm = safeLandmarkDist(thumbTip, indexTip) ?? 1;
-        const palmWidthNorm =
-            safeLandmarkDist(landmarks[5], landmarks[17]) ?? // index MCP to pinky MCP
-            safeLandmarkDist(landmarks[0], landmarks[9]) ??  // wrist to middle MCP
+        // ===== STABLE PINCH DETECTION (MUCH LESS FALSE TRIGGERS) =====
+        // Use 3D distance + dual normalization (palm width + index finger length).
+        // This reduces false pinch under jitter / perspective / distance changes.
+        const pinchDistance3 = safeLandmarkDist3(thumbTip, indexTip, 0.75) ??
+            safeLandmarkDist3(thumbTip, indexTip, 0.0) ??
+            1;
+
+        const palmWidth =
+            safeLandmarkDist3(landmarks[5], landmarks[17], 0.35) ?? // index MCP to pinky MCP
+            safeLandmarkDist3(landmarks[0], landmarks[9], 0.35) ??  // wrist to middle MCP
             0.25;
-        
-        let pinchRatio = pinchDistanceNorm / Math.max(palmWidthNorm, 1e-6);
-        pinchRatio = clamp(pinchRatio, 0, 2);
-        
-        // Smooth ratio over time to avoid flicker
-        // (a bit smoother to avoid false "release" jitter)
-        const RATIO_ALPHA = 0.25;
-        if (typeof state.pinchRatioEMA === 'number') {
-            state.pinchRatioEMA += RATIO_ALPHA * (pinchRatio - state.pinchRatioEMA);
-        } else {
-            state.pinchRatioEMA = pinchRatio;
-        }
-        
-        // Hysteresis thresholds (ratio)
-        // Smaller ratio = fingers closer.
-        const ENTER_RATIO = 0.28; // start drawing when below this
-        const EXIT_RATIO  = 0.44; // stop drawing when above this (more conservative => fewer false releases)
-        
-        // Determine desired (raw) pinch based on current stable state
-        let desiredPinch = state.isPinching
-            ? (state.pinchRatioEMA < EXIT_RATIO)
-            : (state.pinchRatioEMA < ENTER_RATIO);
+
+        const indexLen =
+            safeLandmarkDist3(indexTip, indexPip, 0.35) ??
+            safeLandmarkDist3(indexTip, indexMcp, 0.35) ??
+            0.08;
+
+        // Raw ratios
+        let ratioPalm = pinchDistance3 / Math.max(palmWidth, 1e-6);
+        let ratioFinger = pinchDistance3 / Math.max(indexLen, 1e-6);
+        ratioPalm = clamp(ratioPalm, 0, 2.5);
+        ratioFinger = clamp(ratioFinger, 0, 3.5);
+        const pinchRatioPalmRaw = ratioPalm;
+        const pinchRatioFingerRaw = ratioFinger;
+
+        // Smooth ratios (small alpha => stable)
+        const ALPHA = 0.20;
+        state.pinchRatioEMA = (typeof state.pinchRatioEMA === 'number')
+            ? (state.pinchRatioEMA + ALPHA * (ratioPalm - state.pinchRatioEMA))
+            : ratioPalm;
+        state.pinchRatioFingerEMA = (typeof state.pinchRatioFingerEMA === 'number')
+            ? (state.pinchRatioFingerEMA + ALPHA * (ratioFinger - state.pinchRatioFingerEMA))
+            : ratioFinger;
+
+        // Hysteresis thresholds
+        // ENTER: require BOTH ratios to be clearly pinch-like (prevents accidental triggers)
+        const ENTER_PALM = 0.34;
+        const ENTER_FINGER = 0.72;
+        // EXIT: if either ratio becomes clearly open-like, release (so it doesn't "stick")
+        const EXIT_PALM = 0.48;
+        const EXIT_FINGER = 0.92;
+
+        const enterPinch = (state.pinchRatioEMA < ENTER_PALM) && (state.pinchRatioFingerEMA < ENTER_FINGER);
+        const exitPinch = (state.pinchRatioEMA > EXIT_PALM) || (state.pinchRatioFingerEMA > EXIT_FINGER);
+
+        // Determine desired pinch based on current state
+        let desiredPinch = state.isPinching ? !exitPinch : enterPinch;
         
         // Cooldown to prevent rapid toggles
         if (state.pinchCooldownFrames > 0) {
@@ -629,8 +660,8 @@ function onHandResults(results) {
         }
         
         // Frame confirmation (debounce)
-        const CONFIRM_ON_FRAMES = 2;
-        const CONFIRM_OFF_FRAMES = 6; // require more consistent "open" to release
+        const CONFIRM_ON_FRAMES = 3;  // more stable
+        const CONFIRM_OFF_FRAMES = 5; // still responsive
         if (desiredPinch === state.isPinching) {
             state.pinchConfirmFrames = 0;
             state.pinchReleaseFrames = 0;
@@ -677,11 +708,11 @@ function onHandResults(results) {
             ctx.font = 'bold 20px sans-serif';
             ctx.fillText(isPinching ? '✏️ 书写中' : '✋ 松开', 15, 30);
             
-            // Show distance value
+            // Show ratio values
             ctx.fillStyle = '#fff';
             ctx.font = '12px sans-serif';
-            ctx.fillText(`比值(平滑): ${(state.pinchRatioEMA * 100).toFixed(1)}%`, 15, 50);
-            ctx.fillText(`阈值: 入<${(ENTER_RATIO * 100).toFixed(0)}% 出<${(EXIT_RATIO * 100).toFixed(0)}%`, 15, 65);
+            ctx.fillText(`palm: ${(state.pinchRatioEMA * 100).toFixed(0)}%  finger: ${(state.pinchRatioFingerEMA * 100).toFixed(0)}%`, 15, 50);
+            ctx.fillText(`入<${Math.round(ENTER_PALM*100)}%&<${Math.round(ENTER_FINGER*100)}%  出>${Math.round(EXIT_PALM*100)}%|>${Math.round(EXIT_FINGER*100)}%`, 15, 65);
         }
         
         // ===== DRAWING STATE MACHINE =====
@@ -722,10 +753,8 @@ function onHandResults(results) {
                     const DEBOUNCE_MS = 160;
                     const HOLD_MS = 700; // hold pinch as a fallback if 2nd pulse is hard
 
-                    const ratioPalm = pinchRatio; // raw (already normalized to palm size)
-                    const fingerLen = safeLandmarkDist(indexTip, indexPip) ?? safeLandmarkDist(indexTip, indexMcp) ?? 0.08;
-                    let ratioFinger = pinchDistanceNorm / Math.max(fingerLen, 1e-6);
-                    ratioFinger = clamp(ratioFinger, 0, 3);
+                    const ratioPalm = pinchRatioPalmRaw;
+                    const ratioFinger = pinchRatioFingerRaw;
 
                     // Enter if either signal indicates pinch; re-arm if both indicate open.
                     const ENTER_PALM = 0.50;   // very lenient
