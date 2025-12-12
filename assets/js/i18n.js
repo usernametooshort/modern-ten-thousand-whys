@@ -54,6 +54,11 @@ const translations = {
         exp_5_2_desc: "掌握数学符号变换的核心规则：括号展开、加减号变化、移项变号、分配律、合并同类项。Minecraft 风格的沉浸式练习体验。",
         exp_5_2_hl_val: "符号法则 / 等式变换 / 分配律 / 难度自适应",
         exp_5_2_nav: "5.2 数学符号变换",
+        exp_5_3_bread: "首页 › 语言篇 › 体验 5.3",
+        exp_5_3_title: "5.3 中文笔顺训练",
+        exp_5_3_desc: "通过摄像头追踪手指或触屏书写，学习汉字的正确笔顺。炸弹计时 + 水桶灭火的游戏化设计，支持基础字、常用字、HSK1 字库。",
+        exp_5_3_hl_val: "手指追踪 / 触屏书写 / 笔顺校验 / 游戏化",
+        exp_5_3_nav: "5.3 中文笔顺训练",
 
         // Solar System Experience
         solar_planet_mercury: "水星",
@@ -388,6 +393,11 @@ const translations = {
         exp_5_2_desc: "Master core rules of math symbol transformation: bracket expansion, sign changes, transposition, distributive law, and combining like terms. Minecraft-style immersive practice.",
         exp_5_2_hl_val: "Sign Rules / Equation Transform / Distributive Law / Adaptive Difficulty",
         exp_5_2_nav: "5.2 Math Symbols",
+        exp_5_3_bread: "Home › Language › Exp 5.3",
+        exp_5_3_title: "5.3 Chinese Stroke Order Training",
+        exp_5_3_desc: "Learn correct Chinese character stroke order through camera finger tracking or touchscreen writing. Gamified design with bomb timer and water bucket. Supports basic, common, and HSK1 character sets.",
+        exp_5_3_hl_val: "Finger Tracking / Touch Writing / Stroke Validation / Gamified",
+        exp_5_3_nav: "5.3 Stroke Order",
 
         // Solar System Experience
         solar_title: "Solar System Model",
@@ -722,6 +732,11 @@ const translations = {
         exp_5_2_desc: "Beherrsche die Kernregeln der mathematischen Symboltransformation: Klammerauflösung, Vorzeichenwechsel, Transposition, Distributivgesetz und Zusammenfassung gleichartiger Terme. Minecraft-Stil.",
         exp_5_2_hl_val: "Vorzeichenregeln / Gleichungsumformung / Distributivgesetz / Adaptive Schwierigkeit",
         exp_5_2_nav: "5.2 Mathe-Symbole",
+        exp_5_3_bread: "Start › Sprache › Exp 5.3",
+        exp_5_3_title: "5.3 Chinesische Strichreihenfolge",
+        exp_5_3_desc: "Lerne die korrekte Strichreihenfolge chinesischer Schriftzeichen durch Kamera-Fingerverfolgung oder Touchscreen-Schreiben. Spielerisches Design mit Bomben-Timer und Wassereimer. Unterstützt Basis-, Alltags- und HSK1-Zeichensätze.",
+        exp_5_3_hl_val: "Fingerverfolgung / Touch-Schreiben / Strichvalidierung / Spielerisch",
+        exp_5_3_nav: "5.3 Strichreihenfolge",
 
         // Solar System Experience
         solar_title: "Sonnensystem-Modell",
