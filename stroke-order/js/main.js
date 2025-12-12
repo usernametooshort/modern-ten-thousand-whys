@@ -381,6 +381,31 @@ async function init() {
     
     updateLoadingProgress(100, t('loadingComplete'));
     
+    // Demo hooks (for automated preview / screenshot in headless)
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const demo = params.get('demo');
+        if (demo === 'water' || demo === 'explosion') {
+            // Force touch mode so it works without camera permission
+            state.inputMode = 'touch';
+            // Jump directly to training
+            setTimeout(() => {
+                showScreen('training');
+                startGame();
+                setTimeout(() => {
+                    if (demo === 'water') {
+                        handleCharacterComplete(); // triggers pourWater()
+                    } else {
+                        handleTimeUp(); // triggers explodeBomb()
+                    }
+                }, 700);
+            }, 600);
+            return;
+        }
+    } catch (e) {
+        // ignore
+    }
+
     // Short delay then show permission screen
     setTimeout(() => {
         showScreen('permission');
