@@ -1441,6 +1441,39 @@ body {
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
+.danger-text.relief {
+    color: rgba(125, 255, 210, 0.95);
+    text-shadow: 0 0 14px rgba(46, 204, 113, 0.35);
+    letter-spacing: 3px;
+    animation: relief-fade 1.4s ease-out forwards !important;
+}
+
+@keyframes relief-fade {
+    0% { opacity: 1; transform: translateY(0); }
+    25% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.relief-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9997;
+    background: radial-gradient(circle at center,
+        rgba(120, 220, 255, 0.18) 0%,
+        rgba(80, 170, 255, 0.10) 35%,
+        rgba(46, 204, 113, 0.06) 60%,
+        rgba(0, 0, 0, 0.0) 85%);
+    backdrop-filter: blur(1px);
+    animation: relief-overlay 1.4s ease-out forwards;
+}
+
+@keyframes relief-overlay {
+    0% { opacity: 0; }
+    18% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
 @keyframes danger-flash {
     0%, 100% { opacity: 1; color: #ff3333; }
     50% { opacity: 0.5; color: #ff6666; }
@@ -2195,18 +2228,27 @@ body {
 }
 
 .bomb.extinguished::after {
-    content: '💨';
+    content: '';
     position: absolute;
-    top: -20px;
+    top: -26px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 2rem;
-    animation: steam-puff 1s ease-out infinite;
+    width: 70px;
+    height: 60px;
+    background: radial-gradient(circle,
+        rgba(255,255,255,0.45) 0%,
+        rgba(200,200,200,0.18) 45%,
+        rgba(0,0,0,0) 75%);
+    filter: blur(1.2px);
+    opacity: 0.0;
+    animation: calm-steam 1.6s ease-out infinite;
+    pointer-events: none;
 }
 
-@keyframes steam-puff {
-    0%, 100% { opacity: 0.3; transform: translateX(-50%) translateY(0); }
-    50% { opacity: 0.8; transform: translateX(-50%) translateY(-10px); }
+@keyframes calm-steam {
+    0% { opacity: 0.0; transform: translateX(-50%) translateY(8px) scale(0.85); }
+    20% { opacity: 0.35; }
+    100% { opacity: 0.0; transform: translateX(-50%) translateY(-16px) scale(1.35); }
 }
 
 /* Water puddle under bomb */

@@ -1762,21 +1762,21 @@ function startCinematicExtinguishFx(fromX, fromY, toX, toY) {
         fx.lastTime = t;
         const p = (t - fx.startTime) / 1000;
 
+        // Relief style: no "black fade" (which reads like explosion). Keep it airy/cool.
         ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.10)';
-        ctx.fillRect(0, 0, fx.w, fx.h);
+        ctx.clearRect(0, 0, fx.w, fx.h);
 
         // Emit water droplets along the jet (first 1.1s)
         if (p < 1.1) {
-            const emit = 90;
+            const emit = 70;
             for (let i = 0; i < emit; i++) {
                 const u = Math.random();
                 const x = fromX + (toX - fromX) * u + rand(-12, 12);
                 const y = fromY + (toY - fromY) * u + rand(-12, 12);
                 drops.push({
                     x, y,
-                    vx: rand(-60, 60),
-                    vy: rand(40, 140),
+                    vx: rand(-45, 45),
+                    vy: rand(30, 110),
                     life: rand(0.35, 0.75),
                     age: 0,
                     r: rand(1.2, 2.8)
@@ -1786,10 +1786,10 @@ function startCinematicExtinguishFx(fromX, fromY, toX, toY) {
 
         // Impact spray near target (first 0.9s)
         if (p < 0.9) {
-            const emit = 26;
+            const emit = 18;
             for (let i = 0; i < emit; i++) {
                 const ang = rand(-Math.PI, 0);
-                const spd = rand(220, 620);
+                const spd = rand(160, 420);
                 drops.push({
                     x: toX + rand(-8, 8),
                     y: toY + rand(-8, 8),
@@ -1801,32 +1801,32 @@ function startCinematicExtinguishFx(fromX, fromY, toX, toY) {
                 });
             }
             // mist puffs
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 4; i++) {
                 mist.push({
                     x: toX + rand(-22, 22),
                     y: toY + rand(-16, 16),
-                    vx: rand(-70, 70),
-                    vy: rand(-150, -60),
-                    life: rand(0.6, 1.2),
+                    vx: rand(-50, 50),
+                    vy: rand(-120, -55),
+                    life: rand(0.8, 1.5),
                     age: 0,
-                    r: rand(20, 55),
-                    a: rand(0.08, 0.18)
+                    r: rand(24, 70),
+                    a: rand(0.06, 0.14)
                 });
             }
         }
 
         // steam rises after impact
-        if (p > 0.25 && p < 1.8) {
-            if (Math.random() > 0.4) {
+        if (p > 0.25 && p < 1.9) {
+            if (Math.random() > 0.55) {
                 steam.push({
                     x: toX + rand(-26, 26),
                     y: toY + rand(-10, 10),
-                    vx: rand(-30, 30),
-                    vy: rand(-120, -60),
-                    life: rand(0.9, 1.8),
+                    vx: rand(-22, 22),
+                    vy: rand(-95, -45),
+                    life: rand(1.0, 2.2),
                     age: 0,
-                    r: rand(18, 46),
-                    a: rand(0.10, 0.22)
+                    r: rand(22, 60),
+                    a: rand(0.08, 0.18)
                 });
             }
         }
@@ -2607,6 +2607,11 @@ function pourWater() {
     // Wet look immediately
     if (elements.bomb) {
         elements.bomb.classList.add('wet');
+        elements.bomb.classList.remove('urgent');
+    }
+    if (elements.dangerText) {
+        elements.dangerText.textContent = '安全';
+        elements.dangerText.classList.add('relief');
     }
 
     // Extinguish fuse/bomb a moment after impact begins
@@ -2620,29 +2625,22 @@ function pourWater() {
         }
         playExtinguishSfxCinematic();
     }, 520);
-    
-    // Success flash - blue water effect
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-        position: fixed;
-        inset: 0;
-        background: radial-gradient(circle at center, 
-            rgba(100, 200, 255, 0.5) 0%, 
-            rgba(50, 150, 255, 0.3) 30%,
-            rgba(46, 204, 113, 0.2) 60%,
-            transparent 80%);
-        pointer-events: none;
-        z-index: 1000;
-        animation: flash-screen 1s ease-out forwards;
-    `;
-    document.body.appendChild(flash);
-    
-    setTimeout(() => flash.remove(), 1000);
-    
-    // Celebration vibration
+
+    // Relief overlay (cool, calm, not a "blast")
+    const overlay = document.createElement('div');
+    overlay.className = 'relief-overlay';
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 1400);
+
+    // Gentle vibration only (optional)
     if (navigator.vibrate) {
-        navigator.vibrate([50, 30, 50, 30, 100]);
+        navigator.vibrate([20, 40, 20]);
     }
+
+    // Remove danger label styling after a moment
+    setTimeout(() => {
+        elements.dangerText?.classList.remove('relief');
+    }, 1600);
 }
 
 function explodeBomb() {
