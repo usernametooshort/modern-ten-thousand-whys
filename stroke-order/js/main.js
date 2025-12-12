@@ -65,6 +65,7 @@ const state = {
     calibPinchFirstAt: 0,
     calibPulseArmed: false,
     calibLastPulseAt: 0,
+    calibHoldStartAt: 0,
     
     // MediaPipe
     hands: null,
@@ -713,17 +714,31 @@ function onHandResults(results) {
                     const desc = document.getElementById('calib-desc');
                     if (desc) desc.textContent = '检测到手指后：👌 连续捏合两次即可进入训练（无需点击按钮）';
 
-                    // Use RAW ratio (less latency than EMA) for calibration shortcut.
-                    const CALIB_ENTER = 0.38; // easier to trigger (bigger number => less strict)
-                    const CALIB_EXIT = 0.40;  // easier re-arm
-                    const WINDOW_MS = 2200;
-                    const DEBOUNCE_MS = 180;
+                    // Use RAW ratios (less latency than EMA) for calibration shortcut.
+                    // We combine two signals:
+                    // 1) palm-normalized ratio (thumb-index / palm width)
+                    // 2) finger-normalized ratio (thumb-index / index finger segment length)
+                    const WINDOW_MS = 2600;
+                    const DEBOUNCE_MS = 160;
+                    const HOLD_MS = 700; // hold pinch as a fallback if 2nd pulse is hard
 
-                    const ratio = pinchRatio; // raw (already normalized to palm size)
+                    const ratioPalm = pinchRatio; // raw (already normalized to palm size)
+                    const fingerLen = safeLandmarkDist(indexTip, indexPip) ?? safeLandmarkDist(indexTip, indexMcp) ?? 0.08;
+                    let ratioFinger = pinchDistanceNorm / Math.max(fingerLen, 1e-6);
+                    ratioFinger = clamp(ratioFinger, 0, 3);
+
+                    // Enter if either signal indicates pinch; re-arm if both indicate open.
+                    const ENTER_PALM = 0.50;   // very lenient
+                    const ENTER_FINGER = 0.78; // lenient (pinch < ~0.78 finger segment)
+                    const EXIT_PALM = 0.62;
+                    const EXIT_FINGER = 0.98;
+
+                    const isPinchLike = (ratioPalm < ENTER_PALM) || (ratioFinger < ENTER_FINGER);
+                    const isOpenLike = (ratioPalm > EXIT_PALM) && (ratioFinger > EXIT_FINGER);
                     const tNow = nowMs;
 
                     // Re-arm when clearly open
-                    if (state.calibPulseArmed && ratio > CALIB_EXIT) {
+                    if (state.calibPulseArmed && isOpenLike) {
                         state.calibPulseArmed = false;
                     }
 
@@ -733,10 +748,11 @@ function onHandResults(results) {
                     }
 
                     // Count a pulse when crossing into pinch (and not too soon after last pulse)
-                    if (!state.calibPulseArmed && ratio < CALIB_ENTER) {
+                    if (!state.calibPulseArmed && isPinchLike) {
                         if (!state.calibLastPulseAt || (tNow - state.calibLastPulseAt) > DEBOUNCE_MS) {
                             state.calibLastPulseAt = tNow;
                             state.calibPulseArmed = true;
+                            state.calibHoldStartAt = tNow;
 
                             if (!state.calibPinchFirstAt || (tNow - state.calibPinchFirstAt) > WINDOW_MS) {
                                 state.calibPinchFirstAt = tNow;
@@ -757,9 +773,32 @@ function onHandResults(results) {
                                 state.calibPinchFirstAt = 0;
                                 state.calibPulseArmed = false;
                                 state.calibLastPulseAt = 0;
+                                state.calibHoldStartAt = 0;
                                 showScreen('tutorial');
                             }
                         }
+                    }
+
+                    // Hold-to-complete fallback: if user keeps pinching, count as second after HOLD_MS
+                    if (state.calibPinchCount === 1 && state.calibPulseArmed && state.calibHoldStartAt) {
+                        if (isPinchLike && (tNow - state.calibHoldStartAt) >= HOLD_MS) {
+                            state.calibPinchCount = 0;
+                            state.calibPinchFirstAt = 0;
+                            state.calibPulseArmed = false;
+                            state.calibLastPulseAt = 0;
+                            state.calibHoldStartAt = 0;
+                            if (navigator.vibrate) navigator.vibrate([25, 40, 25]);
+                            showScreen('tutorial');
+                        }
+                    }
+
+                    // Optional debug in calibration (small, non-invasive)
+                    if (state.currentScreen === 'calibration' && ctx) {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                        ctx.fillRect(5, 80, 240, 34);
+                        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+                        ctx.font = '11px sans-serif';
+                        ctx.fillText(`校准比值: palm ${(ratioPalm*100).toFixed(0)}% | finger ${(ratioFinger*100).toFixed(0)}%`, 12, 102);
                     }
                 }
             } else if (state.tutorialActive && state.currentScreen === 'tutorial') {
