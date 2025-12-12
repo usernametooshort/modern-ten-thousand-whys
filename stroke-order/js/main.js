@@ -713,16 +713,22 @@ function onHandResults(results) {
                     const desc = document.getElementById('calib-desc');
                     if (desc) desc.textContent = '检测到手指后：👌 连续捏合两次即可进入训练（无需点击按钮）';
 
-                    const CALIB_ENTER = 0.30; // easier trigger
-                    const CALIB_EXIT = 0.42;  // re-arm threshold
-                    const WINDOW_MS = 1800;
-                    const DEBOUNCE_MS = 220;
+                    // Use RAW ratio (less latency than EMA) for calibration shortcut.
+                    const CALIB_ENTER = 0.38; // easier to trigger (bigger number => less strict)
+                    const CALIB_EXIT = 0.40;  // easier re-arm
+                    const WINDOW_MS = 2200;
+                    const DEBOUNCE_MS = 180;
 
-                    const ratio = typeof state.pinchRatioEMA === 'number' ? state.pinchRatioEMA : 1;
+                    const ratio = pinchRatio; // raw (already normalized to palm size)
                     const tNow = nowMs;
 
                     // Re-arm when clearly open
                     if (state.calibPulseArmed && ratio > CALIB_EXIT) {
+                        state.calibPulseArmed = false;
+                    }
+
+                    // Failsafe: auto re-arm if user pauses a bit (helps with jittery ratios)
+                    if (state.calibPulseArmed && state.calibLastPulseAt && (tNow - state.calibLastPulseAt) > 520) {
                         state.calibPulseArmed = false;
                     }
 
@@ -739,7 +745,12 @@ function onHandResults(results) {
                                 state.calibPinchCount += 1;
                             }
 
-                            if (navigator.vibrate) navigator.vibrate(30);
+                            if (navigator.vibrate) navigator.vibrate(35);
+
+                            // Show progress
+                            if (elements.calibStatusText) {
+                                elements.calibStatusText.textContent = `✓ 检测到手指（捏合 ${state.calibPinchCount}/2）`;
+                            }
 
                             if (state.calibPinchCount >= 2) {
                                 state.calibPinchCount = 0;
