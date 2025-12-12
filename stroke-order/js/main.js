@@ -64,6 +64,8 @@ const state = {
     // MediaPipe
     hands: null,
     camera: null,
+    tutorialCamera: null,
+    calibCamera: null,
     
     // Canvas contexts
     trackingCtx: null,
@@ -935,6 +937,20 @@ function stopCameraTracking() {
     }
 }
 
+function stopTutorialCamera() {
+    if (state.tutorialCamera) {
+        try { state.tutorialCamera.stop(); } catch (e) {}
+        state.tutorialCamera = null;
+    }
+}
+
+function stopCalibCamera() {
+    if (state.calibCamera) {
+        try { state.calibCamera.stop(); } catch (e) {}
+        state.calibCamera = null;
+    }
+}
+
 // ============================================
 // Canvas Setup
 // ============================================
@@ -1555,9 +1571,13 @@ function matchStrokeType(strokeInfo, expectedStroke) {
     const type = expectedStroke.type;
     const length = strokeInfo.length;
     
-    // Minimum stroke length
-    if (length < 15) {
+    // Minimum stroke length (dot can be very small)
+    if (length < 15 && type !== 'dian') {
         console.log('笔画太短:', length);
+        return false;
+    }
+    if (type === 'dian' && length < 6) {
+        console.log('点太短:', length);
         return false;
     }
     
@@ -1619,9 +1639,9 @@ function matchStrokeType(strokeInfo, expectedStroke) {
             const w = Math.abs(strokeInfo.width || 0);
             const h = Math.abs(strokeInfo.height || 0);
             const maxDim = Math.max(w, h);
-            const compact = maxDim < 75 && (w < 65 && h < 65);
-            const shortish = length < 160 && maxDim < 110;
-            const downwardFlick = goingDown && length < 240 && absDx < 90 && absDy < 160;
+            const compact = maxDim < 110; // much easier
+            const shortish = length < 260 && maxDim < 160;
+            const downwardFlick = goingDown && length < 320 && absDx < 140 && absDy < 240;
             const dianPass = compact || shortish || downwardFlick;
             console.log('点 判断:', dianPass ? '✓' : '✗');
             return dianPass;
@@ -2172,16 +2192,25 @@ function showScreen(screen) {
             break;
         case 'calibration':
             elements.calibrationScreen?.classList.remove('hidden');
+            // Stop other camera pipelines before starting calibration
+            stopTutorialCamera();
+            stopCameraTracking();
             startCalibration();
             break;
         case 'tutorial':
             elements.tutorialScreen?.classList.remove('hidden');
+            // Stop training/calibration camera pipelines before starting tutorial
+            stopCalibCamera();
+            stopCameraTracking();
             startTutorial();
             break;
         case 'training':
             elements.trainingScreen?.classList.remove('hidden');
             // Ensure canvases get correct size now that the screen is visible
             ensureTrainingCanvasSizesSoon();
+            // Stop tutorial/calibration camera pipeline so training can own the camera
+            stopTutorialCamera();
+            stopCalibCamera();
             break;
     }
 }
@@ -2244,7 +2273,12 @@ function startTutorial() {
     if (state.inputMode === 'camera' && elements.tutorialVideo) {
         setupCamera(elements.tutorialVideo).then(() => {
             if (state.hands) {
-                const tutorialCamera = new Camera(elements.tutorialVideo, {
+                // Ensure only ONE camera pipeline is active (otherwise training may lose camera)
+                stopCameraTracking();
+                stopCalibCamera();
+                stopTutorialCamera();
+
+                state.tutorialCamera = new Camera(elements.tutorialVideo, {
                     onFrame: async () => {
                         if (state.currentScreen === 'tutorial') {
                             await state.hands.send({ image: elements.tutorialVideo });
@@ -2253,7 +2287,7 @@ function startTutorial() {
                     width: 640,
                     height: 480
                 });
-                tutorialCamera.start();
+                state.tutorialCamera.start();
             }
         }).catch(err => {
             console.warn('Tutorial camera setup failed:', err);
@@ -2420,8 +2454,9 @@ function checkTutorialStroke(strokeInfo, expectedType) {
     const angle = strokeInfo.angle;
     const aspectRatio = strokeInfo.aspectRatio;
     const length = strokeInfo.length;
-    
-    if (length < 30) return false;
+    // Dot can be very short; other strokes need enough length.
+    if (expectedType !== 'dian' && length < 30) return false;
+    if (expectedType === 'dian' && length < 8) return false;
     
     switch (expectedType) {
         case 'heng':
@@ -2553,14 +2588,19 @@ async function startCalibration() {
         
         // Setup MediaPipe for calibration
         if (state.hands) {
-            const calibCamera = new Camera(elements.calibVideo, {
+            // Ensure only ONE camera pipeline is active
+            stopCameraTracking();
+            stopTutorialCamera();
+            stopCalibCamera();
+
+            state.calibCamera = new Camera(elements.calibVideo, {
                 onFrame: async () => {
                     await state.hands.send({ image: elements.calibVideo });
                 },
                 width: 640,
                 height: 480
             });
-            calibCamera.start();
+            state.calibCamera.start();
         }
     } catch (error) {
         console.error('Calibration camera setup failed:', error);
@@ -2617,6 +2657,9 @@ function startGame(character = null) {
     
     // Start camera tracking if using camera mode
     if (state.inputMode === 'camera') {
+        // Make sure tutorial/calibration camera isn't still occupying the device
+        stopTutorialCamera();
+        stopCalibCamera();
         startCameraTracking();
     }
     
