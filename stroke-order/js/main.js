@@ -54,8 +54,11 @@ const state = {
     lastPinchState: false,
     pinchConfirmFrames: 0, // Frames to confirm pinch state change
     pinchReleaseFrames: 0, // Frames to confirm release
+    pinchCooldownFrames: 0, // Small cooldown after state flip to prevent flapping
+    pinchRatioEMA: null, // Smoothed pinch ratio (thumb-index distance / palm size)
     drawingTrail: [], // Persistent trail for current stroke
     handSize: 100, // Estimated hand size for adaptive threshold
+    filteredIndexPoint: null, // Smoothed index fingertip in pixels
     
     // MediaPipe
     hands: null,
@@ -72,6 +75,42 @@ const state = {
     canvasWidth: 0,
     canvasHeight: 0
 };
+
+// ============================================
+// Small math helpers
+// ============================================
+function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+}
+
+function dist2(ax, ay, bx, by) {
+    const dx = ax - bx;
+    const dy = ay - by;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function safeLandmarkDist(a, b) {
+    if (!a || !b) return null;
+    if (typeof a.x !== 'number' || typeof a.y !== 'number') return null;
+    if (typeof b.x !== 'number' || typeof b.y !== 'number') return null;
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    return Number.isFinite(d) ? d : null;
+}
+
+function avgPoints(points) {
+    if (!points || points.length === 0) return null;
+    let sx = 0, sy = 0, n = 0;
+    for (const p of points) {
+        if (!p) continue;
+        const x = p[0], y = p[1];
+        if (typeof x !== 'number' || typeof y !== 'number') continue;
+        sx += x; sy += y; n++;
+    }
+    if (n === 0) return null;
+    return [sx / n, sy / n];
+}
 
 // ============================================
 // Translations
@@ -419,51 +458,96 @@ function onHandResults(results) {
             return;
         }
         
-        const x = (1 - indexTip.x) * width; // Mirror
-        const y = indexTip.y * height;
+        // Raw fingertip position (mirrored)
+        const rawX = (1 - indexTip.x) * width;
+        const rawY = indexTip.y * height;
+        
+        // Smooth fingertip position to reduce jitter (helps both drawing + stroke classification)
+        const POS_ALPHA = 0.45; // higher = more responsive; lower = smoother
+        if (!state.filteredIndexPoint) {
+            state.filteredIndexPoint = { x: rawX, y: rawY };
+        } else {
+            state.filteredIndexPoint.x += POS_ALPHA * (rawX - state.filteredIndexPoint.x);
+            state.filteredIndexPoint.y += POS_ALPHA * (rawY - state.filteredIndexPoint.y);
+        }
+        const x = state.filteredIndexPoint.x;
+        const y = state.filteredIndexPoint.y;
         
         // Update finger detection state
         state.fingerDetected = true;
         updateCalibrationStatus(true);
         
-        // ===== SIMPLE PINCH DETECTION =====
-        // Use normalized coordinates (0-1) for consistency
-        const thumbTipNorm = { x: thumbTip.x, y: thumbTip.y };
-        const indexTipNorm = { x: indexTip.x, y: indexTip.y };
+        // ===== STABLE PINCH DETECTION (LESS FALSE POSITIVES) =====
+        // Use hand-relative scale: (thumb-index distance) / (palm width)
+        // This is more stable than using the whole screen size.
+        const pinchDistanceNorm = safeLandmarkDist(thumbTip, indexTip) ?? 1;
+        const palmWidthNorm =
+            safeLandmarkDist(landmarks[5], landmarks[17]) ?? // index MCP to pinky MCP
+            safeLandmarkDist(landmarks[0], landmarks[9]) ??  // wrist to middle MCP
+            0.25;
         
-        // Calculate normalized distance (0-1 scale)
-        const pinchDistanceNorm = Math.sqrt(
-            Math.pow(thumbTipNorm.x - indexTipNorm.x, 2) + 
-            Math.pow(thumbTipNorm.y - indexTipNorm.y, 2)
-        );
+        let pinchRatio = pinchDistanceNorm / Math.max(palmWidthNorm, 1e-6);
+        pinchRatio = clamp(pinchRatio, 0, 2);
         
-        // Simple fixed threshold: 0.05 = fingers very close, 0.1 = fingers apart
-        // Using normalized distance makes it independent of screen size
-        const PINCH_THRESHOLD = 0.08;  // Pinch when distance < 8% of screen
-        const RELEASE_THRESHOLD = 0.12; // Release when distance > 12% of screen
-        
-        // Simple state machine with hysteresis
-        let isPinching;
-        if (state.isPinching) {
-            // Currently pinching - release only when far apart
-            isPinching = pinchDistanceNorm < RELEASE_THRESHOLD;
+        // Smooth ratio over time to avoid flicker
+        const RATIO_ALPHA = 0.35;
+        if (typeof state.pinchRatioEMA === 'number') {
+            state.pinchRatioEMA += RATIO_ALPHA * (pinchRatio - state.pinchRatioEMA);
         } else {
-            // Not pinching - start only when very close
-            isPinching = pinchDistanceNorm < PINCH_THRESHOLD;
+            state.pinchRatioEMA = pinchRatio;
         }
         
-        // Update state immediately (no frame delay)
-        state.isPinching = isPinching;
+        // Hysteresis thresholds (ratio)
+        // Smaller ratio = fingers closer.
+        const ENTER_RATIO = 0.28; // start drawing when below this
+        const EXIT_RATIO  = 0.36; // stop drawing when above this
+        
+        // Determine desired (raw) pinch based on current stable state
+        let desiredPinch = state.isPinching
+            ? (state.pinchRatioEMA < EXIT_RATIO)
+            : (state.pinchRatioEMA < ENTER_RATIO);
+        
+        // Cooldown to prevent rapid toggles
+        if (state.pinchCooldownFrames > 0) {
+            state.pinchCooldownFrames--;
+            desiredPinch = state.isPinching;
+        }
+        
+        // Frame confirmation (debounce)
+        const CONFIRM_ON_FRAMES = 2;
+        const CONFIRM_OFF_FRAMES = 3;
+        if (desiredPinch === state.isPinching) {
+            state.pinchConfirmFrames = 0;
+            state.pinchReleaseFrames = 0;
+        } else if (desiredPinch) {
+            state.pinchConfirmFrames++;
+            state.pinchReleaseFrames = 0;
+            if (state.pinchConfirmFrames >= CONFIRM_ON_FRAMES) {
+                state.isPinching = true;
+                state.pinchConfirmFrames = 0;
+                state.pinchCooldownFrames = 2;
+            }
+        } else {
+            state.pinchReleaseFrames++;
+            state.pinchConfirmFrames = 0;
+            if (state.pinchReleaseFrames >= CONFIRM_OFF_FRAMES) {
+                state.isPinching = false;
+                state.pinchReleaseFrames = 0;
+                state.pinchCooldownFrames = 2;
+            }
+        }
+        
+        const isPinching = state.isPinching;
         
         // Calculate pixel distance for display
         const thumbX = (1 - thumbTip.x) * width;
         const thumbY = thumbTip.y * height;
-        const pinchDistancePx = Math.sqrt(Math.pow(x - thumbX, 2) + Math.pow(y - thumbY, 2));
+        const pinchDistancePx = dist2(rawX, rawY, thumbX, thumbY);
         
         // Debug info
         if (ctx) {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillRect(5, 5, 160, 55);
+            ctx.fillRect(5, 5, 220, 70);
             
             ctx.fillStyle = isPinching ? '#2ecc71' : '#e74c3c';
             ctx.font = 'bold 20px sans-serif';
@@ -472,7 +556,8 @@ function onHandResults(results) {
             // Show distance value
             ctx.fillStyle = '#fff';
             ctx.font = '12px sans-serif';
-            ctx.fillText(`距离: ${(pinchDistanceNorm * 100).toFixed(1)}% (阈值: ${PINCH_THRESHOLD * 100}%)`, 15, 50);
+            ctx.fillText(`比值(平滑): ${(state.pinchRatioEMA * 100).toFixed(1)}%`, 15, 50);
+            ctx.fillText(`阈值: 入<${(ENTER_RATIO * 100).toFixed(0)}% 出<${(EXIT_RATIO * 100).toFixed(0)}%`, 15, 65);
         }
         
         // ===== DRAWING STATE MACHINE =====
@@ -945,6 +1030,17 @@ function startDrawing(x, y) {
 
 function continueDrawing(x, y) {
     if (!state.isDrawing) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    
+    // Debounce sampling: only add a point if the finger moved enough
+    const MIN_POINT_DIST = 4; // px
+    if (state.lastPoint) {
+        const dx = x - state.lastPoint.x;
+        const dy = y - state.lastPoint.y;
+        if ((dx * dx + dy * dy) < (MIN_POINT_DIST * MIN_POINT_DIST)) {
+            return;
+        }
+    }
     
     state.currentPath.push([x, y]);
     
@@ -1053,9 +1149,11 @@ function analyzeStrokeCharacteristics(path) {
     const height = maxY - minY;
     const aspectRatio = width / (height || 1);
     
-    // Calculate direction from start to end
-    const start = path[0];
-    const end = path[path.length - 1];
+    // Calculate direction from averaged start/end segments (more robust than single points)
+    const n = path.length;
+    const k = clamp(Math.floor(n * 0.15), 1, 8); // first/last ~15% (cap to avoid over-smoothing)
+    const start = avgPoints(path.slice(0, k)) || path[0];
+    const end = avgPoints(path.slice(n - k)) || path[n - 1];
     
     let dx = end[0] - start[0];
     let dy = end[1] - start[1];
@@ -1799,6 +1897,17 @@ function startTutorialDrawing(x, y) {
 
 function continueTutorialDrawing(x, y) {
     if (!state.isDrawing) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    
+    // Debounce sampling: only add a point if the finger moved enough
+    const MIN_POINT_DIST = 4; // px
+    if (state.lastPoint) {
+        const dx = x - state.lastPoint.x;
+        const dy = y - state.lastPoint.y;
+        if ((dx * dx + dy * dy) < (MIN_POINT_DIST * MIN_POINT_DIST)) {
+            return;
+        }
+    }
     
     state.currentPath.push([x, y]);
     
