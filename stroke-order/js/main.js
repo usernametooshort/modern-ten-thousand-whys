@@ -58,6 +58,8 @@ const state = {
     pinchCooldownFrames: 0, // Small cooldown after state flip to prevent flapping
     pinchRatioEMA: null, // Smoothed pinch ratio (thumb-index distance / palm size)
     pinchRatioFingerEMA: null, // Smoothed pinch ratio (thumb-index distance / index finger length)
+    pinchScoreEMA: null, // Smoothed pinch score (0..1)
+    pinchStateChangedAt: 0, // ms timestamp when pinch state last flipped
     drawingTrail: [], // Persistent trail for current stroke
     handSize: 100, // Estimated hand size for adaptive threshold
     filteredIndexPoint: null, // Smoothed index fingertip in pixels
@@ -106,6 +108,16 @@ const state = {
 // ============================================
 function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
+}
+
+function clamp01(v) {
+    return Math.max(0, Math.min(1, v));
+}
+
+function smoothstep(edge0, edge1, x) {
+    // 0..1 when x moves from edge0..edge1
+    const t = clamp01((x - edge0) / (edge1 - edge0));
+    return t * t * (3 - 2 * t);
 }
 
 function dist2(ax, ay, bx, by) {
@@ -639,19 +651,31 @@ function onHandResults(results) {
             ? (state.pinchRatioFingerEMA + ALPHA * (ratioFinger - state.pinchRatioFingerEMA))
             : ratioFinger;
 
-        // Hysteresis thresholds
-        // ENTER: require BOTH ratios to be clearly pinch-like (prevents accidental triggers)
+        // Convert ratios into a smooth "pinch score" (0..1)
+        // Higher score = more pinch-like. Use hysteresis on score to avoid flicker.
         const ENTER_PALM = 0.34;
         const ENTER_FINGER = 0.72;
-        // EXIT: if either ratio becomes clearly open-like, release (so it doesn't "stick")
-        const EXIT_PALM = 0.48;
-        const EXIT_FINGER = 0.92;
+        const EXIT_PALM = 0.50;
+        const EXIT_FINGER = 0.98;
 
-        const enterPinch = (state.pinchRatioEMA < ENTER_PALM) && (state.pinchRatioFingerEMA < ENTER_FINGER);
-        const exitPinch = (state.pinchRatioEMA > EXIT_PALM) || (state.pinchRatioFingerEMA > EXIT_FINGER);
+        // Map ratio -> score: ratio <= ENTER => ~1, ratio >= EXIT => ~0
+        const palmScore = 1 - smoothstep(ENTER_PALM, EXIT_PALM, state.pinchRatioEMA);
+        const fingerScore = 1 - smoothstep(ENTER_FINGER, EXIT_FINGER, state.pinchRatioFingerEMA);
+        const pinchScoreRaw = clamp01(Math.min(palmScore, fingerScore));
+
+        const SCORE_ALPHA = 0.18;
+        state.pinchScoreEMA = (typeof state.pinchScoreEMA === 'number')
+            ? (state.pinchScoreEMA + SCORE_ALPHA * (pinchScoreRaw - state.pinchScoreEMA))
+            : pinchScoreRaw;
+
+        const ENTER_SCORE = 0.78;
+        const EXIT_SCORE = 0.38;
+
+        const wantPinch = state.pinchScoreEMA > ENTER_SCORE;
+        const wantOpen = state.pinchScoreEMA < EXIT_SCORE;
 
         // Determine desired pinch based on current state
-        let desiredPinch = state.isPinching ? !exitPinch : enterPinch;
+        let desiredPinch = state.isPinching ? !wantOpen : wantPinch;
         
         // Cooldown to prevent rapid toggles
         if (state.pinchCooldownFrames > 0) {
@@ -660,8 +684,9 @@ function onHandResults(results) {
         }
         
         // Frame confirmation (debounce)
-        const CONFIRM_ON_FRAMES = 3;  // more stable
-        const CONFIRM_OFF_FRAMES = 5; // still responsive
+        const CONFIRM_ON_FRAMES = 3;  // stable enter
+        const CONFIRM_OFF_FRAMES = 6; // harder to falsely release
+        const MIN_HOLD_MS = 160;      // minimum hold time before allowing release
         if (desiredPinch === state.isPinching) {
             state.pinchConfirmFrames = 0;
             state.pinchReleaseFrames = 0;
@@ -672,14 +697,22 @@ function onHandResults(results) {
                 state.isPinching = true;
                 state.pinchConfirmFrames = 0;
                 state.pinchCooldownFrames = 2;
+                state.pinchStateChangedAt = nowMs;
             }
         } else {
+            // Prevent micro "release" spikes right after entering pinch
+            if (state.pinchStateChangedAt && (nowMs - state.pinchStateChangedAt) < MIN_HOLD_MS) {
+                desiredPinch = true;
+                state.pinchReleaseFrames = 0;
+            } else {
             state.pinchReleaseFrames++;
             state.pinchConfirmFrames = 0;
             if (state.pinchReleaseFrames >= CONFIRM_OFF_FRAMES) {
                 state.isPinching = false;
                 state.pinchReleaseFrames = 0;
                 state.pinchCooldownFrames = 2;
+                state.pinchStateChangedAt = nowMs;
+            }
             }
         }
         
@@ -712,7 +745,7 @@ function onHandResults(results) {
             ctx.fillStyle = '#fff';
             ctx.font = '12px sans-serif';
             ctx.fillText(`palm: ${(state.pinchRatioEMA * 100).toFixed(0)}%  finger: ${(state.pinchRatioFingerEMA * 100).toFixed(0)}%`, 15, 50);
-            ctx.fillText(`入<${Math.round(ENTER_PALM*100)}%&<${Math.round(ENTER_FINGER*100)}%  出>${Math.round(EXIT_PALM*100)}%|>${Math.round(EXIT_FINGER*100)}%`, 15, 65);
+            ctx.fillText(`score: ${(state.pinchScoreEMA * 100).toFixed(0)}  入>${Math.round(ENTER_SCORE*100)}  出<${Math.round(EXIT_SCORE*100)}`, 15, 65);
         }
         
         // ===== DRAWING STATE MACHINE =====
