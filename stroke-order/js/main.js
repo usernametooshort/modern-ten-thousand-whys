@@ -59,6 +59,7 @@ const state = {
     drawingTrail: [], // Persistent trail for current stroke
     handSize: 100, // Estimated hand size for adaptive threshold
     filteredIndexPoint: null, // Smoothed index fingertip in pixels
+    lastHandSeenAt: 0, // ms timestamp for last valid hand landmark frame
     
     // MediaPipe
     hands: null,
@@ -484,8 +485,10 @@ function onHandResults(results) {
         }
     }
     
+    const nowMs = Date.now();
     if (results && results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
+        state.lastHandSeenAt = nowMs;
         
         // Safety check for landmarks
         if (!landmarks || !landmarks[8] || !landmarks[4]) {
@@ -535,7 +538,8 @@ function onHandResults(results) {
         pinchRatio = clamp(pinchRatio, 0, 2);
         
         // Smooth ratio over time to avoid flicker
-        const RATIO_ALPHA = 0.35;
+        // (a bit smoother to avoid false "release" jitter)
+        const RATIO_ALPHA = 0.25;
         if (typeof state.pinchRatioEMA === 'number') {
             state.pinchRatioEMA += RATIO_ALPHA * (pinchRatio - state.pinchRatioEMA);
         } else {
@@ -545,7 +549,7 @@ function onHandResults(results) {
         // Hysteresis thresholds (ratio)
         // Smaller ratio = fingers closer.
         const ENTER_RATIO = 0.28; // start drawing when below this
-        const EXIT_RATIO  = 0.36; // stop drawing when above this
+        const EXIT_RATIO  = 0.44; // stop drawing when above this (more conservative => fewer false releases)
         
         // Determine desired (raw) pinch based on current stable state
         let desiredPinch = state.isPinching
@@ -560,7 +564,7 @@ function onHandResults(results) {
         
         // Frame confirmation (debounce)
         const CONFIRM_ON_FRAMES = 2;
-        const CONFIRM_OFF_FRAMES = 3;
+        const CONFIRM_OFF_FRAMES = 6; // require more consistent "open" to release
         if (desiredPinch === state.isPinching) {
             state.pinchConfirmFrames = 0;
             state.pinchReleaseFrames = 0;
@@ -656,10 +660,29 @@ function onHandResults(results) {
             }
         }
     } else {
+        // If tracking drops for a moment, don't immediately treat it as "release"
+        // (this was causing: 1) trail disappears 2) pinching misread as released)
+        const inGameScreen = (state.currentScreen === 'training' || state.currentScreen === 'tutorial');
+        const graceMs = inGameScreen ? 350 : 0; // keep state for short time in gameplay screens
+        const sinceSeen = state.lastHandSeenAt ? (nowMs - state.lastHandSeenAt) : 999999;
+        
         state.fingerDetected = false;
+        
+        if (sinceSeen <= graceMs) {
+            // Keep previous pinch state + trail; still render last known trail for continuity
+            if (ctx) {
+                try {
+                    drawFingerTrail(ctx, state.isPinching);
+                } catch (e) {
+                    // ignore
+                }
+            }
+            return;
+        }
+        
         updateCalibrationStatus(false);
         
-        // Clear trail when no finger detected
+        // Hard reset after grace window
         state.fingerTrail = [];
         state.lastPinchState = false;
         state.isPinching = false;
