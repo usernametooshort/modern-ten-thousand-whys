@@ -788,52 +788,93 @@ class SolarSystemApp {
     }
 
     createSpiralGalaxy() {
-        // HYBRID APPROACH: Procedural stars (crisp) + subtle nebula background
+        // MULTI-LAYER DEEP SPACE: Procedural stars + layered nebulae for depth
+        const textureLoader = new THREE.TextureLoader();
 
-        // 1. PROCEDURAL STARFIELD - Sharp, crisp stars as 3D particles
-        const starCount = 50000; // Dense starfield
+        // 1. FARTHEST LAYER - Deep space nebula (very far, subtle)
+        const farNebulaTex = textureLoader.load('./textures/nebula_far.png');
+        farNebulaTex.colorSpace = THREE.SRGBColorSpace;
+        const farNebulaGeo = new THREE.SphereGeometry(9000, 64, 64);
+        const farNebulaMat = new THREE.MeshBasicMaterial({
+            map: farNebulaTex,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.4,
+            depthWrite: false
+        });
+        const farNebula = new THREE.Mesh(farNebulaGeo, farNebulaMat);
+        farNebula.renderOrder = -1003;
+        this.scene.add(farNebula);
+
+        // 2. MIDDLE LAYER - Milky Way band
+        const milkyWayTex = textureLoader.load('./textures/milky_way.png');
+        milkyWayTex.colorSpace = THREE.SRGBColorSpace;
+        const milkyWayGeo = new THREE.SphereGeometry(7000, 64, 64);
+        const milkyWayMat = new THREE.MeshBasicMaterial({
+            map: milkyWayTex,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.5,
+            depthWrite: false
+        });
+        const milkyWay = new THREE.Mesh(milkyWayGeo, milkyWayMat);
+        milkyWay.rotation.x = Math.PI * 0.1; // Slight tilt
+        milkyWay.rotation.z = Math.PI * 0.15;
+        milkyWay.renderOrder = -1002;
+        this.scene.add(milkyWay);
+
+        // 3. CLOSER LAYER - Colorful emission nebulae
+        const midNebulaTex = textureLoader.load('./textures/nebula_mid.png');
+        midNebulaTex.colorSpace = THREE.SRGBColorSpace;
+        const midNebulaGeo = new THREE.SphereGeometry(5000, 64, 64);
+        const midNebulaMat = new THREE.MeshBasicMaterial({
+            map: midNebulaTex,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.35,
+            depthWrite: false
+        });
+        const midNebula = new THREE.Mesh(midNebulaGeo, midNebulaMat);
+        midNebula.rotation.y = Math.PI * 0.3; // Different angle for variety
+        midNebula.renderOrder = -1001;
+        this.scene.add(midNebula);
+
+        // 4. PROCEDURAL STARFIELD - Sharp, crisp stars as 3D particles
+        const starCount = 80000; // Even denser
         const starGeometry = new THREE.BufferGeometry();
         const starPositions = new Float32Array(starCount * 3);
         const starColors = new Float32Array(starCount * 3);
-        const starSizes = new Float32Array(starCount);
 
         const starColorPalette = [
-            new THREE.Color(0xffffff), // White
-            new THREE.Color(0xffffee), // Warm white
-            new THREE.Color(0xeeeeff), // Cool white
-            new THREE.Color(0xaaccff), // Blue
-            new THREE.Color(0xffddaa), // Yellow/Orange
-            new THREE.Color(0xffaaaa), // Red
+            new THREE.Color(0xffffff),
+            new THREE.Color(0xffffee),
+            new THREE.Color(0xeeeeff),
+            new THREE.Color(0xaaccff),
+            new THREE.Color(0xffddaa),
+            new THREE.Color(0xffaaaa),
         ];
 
         for (let i = 0; i < starCount; i++) {
             const i3 = i * 3;
-
-            // Distribute on a large sphere
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
-            const radius = 3000 + Math.random() * 2000; // 3000-5000 distance
+            const radius = 2500 + Math.random() * 3500; // 2500-6000 varied distances
 
             starPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
             starPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
             starPositions[i3 + 2] = radius * Math.cos(phi);
 
-            // Random color from palette
             const color = starColorPalette[Math.floor(Math.random() * starColorPalette.length)];
             starColors[i3] = color.r;
             starColors[i3 + 1] = color.g;
             starColors[i3 + 2] = color.b;
-
-            // Varying star sizes - mostly tiny with some brighter ones
-            starSizes[i] = Math.random() < 0.98 ? 1 + Math.random() * 2 : 4 + Math.random() * 4;
         }
 
         starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
         starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
 
         const starMaterial = new THREE.PointsMaterial({
-            size: 2,
+            size: 1.5,
             sizeAttenuation: true,
             vertexColors: true,
             transparent: true,
@@ -846,25 +887,7 @@ class SolarSystemApp {
         stars.renderOrder = -999;
         this.scene.add(stars);
 
-        // 2. NEBULA LAYER - Subtle colorful backdrop (low opacity)
-        const textureLoader = new THREE.TextureLoader();
-        const nebulaTexture = textureLoader.load('./textures/galaxy_skybox.png');
-        nebulaTexture.colorSpace = THREE.SRGBColorSpace;
-
-        const nebulaGeo = new THREE.SphereGeometry(4500, 64, 64);
-        const nebulaMat = new THREE.MeshBasicMaterial({
-            map: nebulaTexture,
-            side: THREE.BackSide,
-            transparent: true,
-            opacity: 0.3, // Subtle, not overpowering
-            depthWrite: false
-        });
-
-        const nebula = new THREE.Mesh(nebulaGeo, nebulaMat);
-        nebula.renderOrder = -1000; // Behind stars
-        this.scene.add(nebula);
-
-        this.galaxyMesh = nebula;
+        this.galaxyMesh = farNebula;
     }
 
     performIntro() {
