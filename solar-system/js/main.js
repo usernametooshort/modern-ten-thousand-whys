@@ -1082,6 +1082,12 @@ void main() {
                 const cCtx = cloudCanvas.getContext('2d');
                 // Transparent background
 
+                // Helper for cloud generation
+                const smoothstep = (min, max, value) => {
+                    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+                    return x * x * (3 - 2 * x);
+                };
+
                 // Advanced Cloud Noise
                 const imgData = cCtx.createImageData(1024, 512);
                 for (let i = 0; i < imgData.data.length; i += 4) {
