@@ -205,21 +205,73 @@ const starsMesh = new THREE.Points(starsGeometry, starsMaterial);
 starsGroup.add(starsMesh);
 
 
-// --- Location & Logic ---
-let userLat = 31.2304;
-let userLon = 121.4737;
+// --- Weather & Environment Control ---
+let weatherState = {
+    code: 0, // WMO code
+    isDay: true,
+    condition: 'clear', // clear, cloudy, rain, snow
+    cloudCover: 0
+};
 
-// Try to get location
+async function fetchWeather(lat, lon) {
+    try {
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,is_day,cloud_cover&daily=sunrise,sunset&timezone=auto`);
+        const data = await response.json();
+
+        if (data.current) {
+            weatherState.code = data.current.weather_code;
+            weatherState.isDay = data.current.is_day === 1;
+            weatherState.cloudCover = data.current.cloud_cover;
+
+            // simple mapping
+            const code = weatherState.code;
+            if (code >= 71 && code <= 77) weatherState.condition = 'snow'; // Snow
+            else if (code >= 51 && code <= 67) weatherState.condition = 'rain'; // Rain/Drizzle
+            else if (code >= 80 && code <= 82) weatherState.condition = 'rain'; // Showers
+            else if (code >= 95) weatherState.condition = 'rain'; // Thunderstorm
+            else if (code >= 1 || weatherState.cloudCover > 50) weatherState.condition = 'cloudy';
+            else weatherState.condition = 'clear';
+
+            // Store sunrise/sunset for sun position clamping
+            if (data.daily) {
+                weatherState.sunrise = new Date(data.daily.sunrise[0]);
+                weatherState.sunset = new Date(data.daily.sunset[0]);
+            }
+        }
+        updateEnvironment();
+    } catch (e) {
+        console.warn('Weather fetch failed', e);
+    }
+}
+
+// --- Location & Logic ---
+// Default to timezone-based rough location (Fall back to user's time zone if Geo denied)
+const tzOffset = new Date().getTimezoneOffset(); // in minutes, positive if behind UTC
+// Estimate Longitude: 15 degrees per hour. Reverse sign because offset is positive for West.
+let userLon = (tzOffset / -60) * 15;
+// Estimate Latitude: Default to 40 (Mid-latitude) as generic Northern Hemisphere or guess based on language? 
+// Let's stick to 40 N as a safe default for "seasons".
+let userLat = 40.0;
+
+// Initial update with estimated location
+updateLocationDisplay(userLat, userLon); // Show estimated location immediately
+fetchWeather(userLat, userLon); // Fetch weather for estimated location immediately
+updateEnvironment();
+
+// Try to get precise location
 if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((pos) => {
         userLat = pos.coords.latitude;
         userLon = pos.coords.longitude;
         updateLocationDisplay(userLat, userLon);
-        updateEnvironment();
+        fetchWeather(userLat, userLon);
     }, (err) => {
-        console.warn('Geolocation denied, using default.');
-        updateLocationDisplay(null, null); // Show default or error
-        updateEnvironment();
+        console.warn('Geolocation denied/failed, keeping timezone estimation.');
+        // User might have denied, but we already showed the estimate. 
+        // We can optionally refresh the display or just leave it.
+    }, {
+        timeout: 5000, // Timeout after 5 seconds
+        maximumAge: 60000
     });
 } else {
     updateEnvironment();
@@ -243,7 +295,16 @@ async function updateLocationDisplay(lat, lon, lang = 'en') {
         return;
     }
 
-    if (locText) locText.innerText = (i18n ? i18n.get('locu_searching') : 'Searching...') + ` ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    // If we are using the rough timezone estimate (exactly integer calculation from above might have decimals, but let's check basic validity)
+    // We'll just show "Detecting..." or the coordinates if getting precise city fails.
+    if (locText && locText.innerText.includes('Detecting')) {
+        // Keep "Detecting..." visible until city fetch responds or fails
+    }
+
+    // If we are showing the initial "Detecting...", let's update it to "Searching..." + Coords
+    // But if we already have a city (from estimate), and we are just refining, maybe keep the old one until new one arrives?
+    // Let's just update to "Searching..." to show activity.
+    if (locText) locText.innerText = (i18n ? i18n.get('locu_searching') : 'Searching...') + ` ${lat.toFixed(1)}, ${lon.toFixed(1)}`;
 
     try {
         // Map app lang codes to BigDataCloud supported langs where possible
@@ -266,53 +327,101 @@ async function updateLocationDisplay(lat, lon, lang = 'en') {
 }
 
 function updateEnvironment() {
-    const now = new Date();
+    // 1. Sun Position Logic (Day/Night)
+    // If we have precise sunrise/sunset from API, use it to clamp/force day mode.
+    // Otherwise use the calculated elevation.
 
+    const now = new Date();
+    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
+
+    // ... (Use previous astronomical calculation for base, but override if needed)
     const start = new Date(now.getFullYear(), 0, 0);
     const diff = now - start;
     const oneDay = 1000 * 60 * 60 * 24;
     const day = Math.floor(diff / oneDay);
-
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
     const axisTilt = 23.44;
     const declination = axisTilt * Math.sin(2 * Math.PI * (day + 284) / 365);
-
     const solarTime = utcHours + (userLon / 15);
     const hourAngle = (solarTime - 12) * 15;
-
     const latRad = THREE.MathUtils.degToRad(userLat);
     const decRad = THREE.MathUtils.degToRad(declination);
     const haRad = THREE.MathUtils.degToRad(hourAngle);
+    let sinElevation = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad);
+    let elevation = THREE.MathUtils.radToDeg(Math.asin(sinElevation));
 
-    const sinElevation = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad);
-    const elevation = THREE.MathUtils.radToDeg(Math.asin(sinElevation));
+    // FORCE DAY: If API says is_day=1, ensure sun is well above horizon to show blue sky.
+    // If we rely only on calculated elevation, it might be 2 degrees (sunrise) which looks dark.
+    // We force a minimum elevation of 15 degrees for a "Clear Day" look.
+    if (weatherState.isDay) {
+        if (elevation < 15) elevation = 15;
+    } else {
+        // Night
+        if (elevation > -5) elevation = -5;
+    }
 
     const cosAzimuth = (Math.sin(decRad) - Math.sin(latRad) * sinElevation) / (Math.cos(latRad) * Math.cos(Math.asin(sinElevation)));
     const clampedCosAz = Math.max(-1, Math.min(1, cosAzimuth));
     let azimuth = THREE.MathUtils.radToDeg(Math.acos(clampedCosAz));
     if (Math.sin(haRad) > 0) azimuth = 360 - azimuth;
-
     const phi = THREE.MathUtils.degToRad(90 - elevation);
     const theta = THREE.MathUtils.degToRad(azimuth);
-
     sun.setFromSphericalCoords(1, phi, theta);
-    sky.material.uniforms['sunPosition'].value.copy(sun);
 
-    let starOpacity = 0;
-    if (elevation < 5) {
-        starOpacity = THREE.MathUtils.mapLinear(elevation, 5, -10, 0, 1);
-        starOpacity = Math.min(Math.max(starOpacity, 0), 1);
+    // CRITICAL FIX: Sky shader expects sunPosition to have magnitude matching the skybox size (450000)
+    // Passing a unit vector (len=1) causes it to think sun is at 0 height (Horizon/Dark).
+    sky.material.uniforms['sunPosition'].value.copy(sun).multiplyScalar(450000);
+
+
+    // 2. Sky Appearance (Weather)
+    // Clear: turbidity 2, rayleigh 3
+    // Cloudy: turbidity 10-20, rayleigh 1
+    let targetTurbidity = 2;
+    let targetRayleigh = 3;
+
+    if (weatherState.condition === 'cloudy') {
+        targetTurbidity = 10;
+        targetRayleigh = 1.5;
+    } else if (weatherState.condition === 'rain' || weatherState.condition === 'snow') {
+        targetTurbidity = 20; // Very Gray
+        targetRayleigh = 0.5;
     }
-    // Blend realistic stars
+
+    sky.material.uniforms['turbidity'].value = targetTurbidity;
+    sky.material.uniforms['rayleigh'].value = targetRayleigh;
+
+    // 3. Stars Visibility
+    let starOpacity = 0;
+    if (!weatherState.isDay) {
+        // Night
+        if (weatherState.condition === 'clear') starOpacity = 1;
+        else if (weatherState.condition === 'cloudy') starOpacity = 0.3; // Visible through gaps?
+        else starOpacity = 0; // Rain/Snow hides stars
+    }
     starsMaterial.opacity = starOpacity;
 
-    // Also blend the "Warp Particles" based on day/night?
-    // User wants "Amazing" effects. Let's keep Warp Particles visible ALWAYS but maybe brighter at night.
-    particlesMaterial.opacity = Math.max(0.4, starOpacity);
 
+    // 4. Particle System (Rain/Snow/Warp)
+    // We change the behavior in the animate loop, but here we set opacity/color
+    if (weatherState.condition === 'rain') {
+        particlesMaterial.color.setHex(0xaaaaaa); // Grayish rain
+        particlesMaterial.size = 0.08;
+        particlesMaterial.opacity = 0.6;
+    } else if (weatherState.condition === 'snow') {
+        particlesMaterial.color.setHex(0xffffff); // White snow
+        particlesMaterial.size = 0.12;
+        particlesMaterial.opacity = 0.8;
+    } else {
+        // Normal Warp
+        particlesMaterial.color.setHex(0x00f3ff); // Cyan
+        particlesMaterial.size = 0.05;
+        // Day/Night opacity logic
+        const baseParticleOpacity = weatherState.isDay ? 0.2 : 0.5;
+        particlesMaterial.opacity = baseParticleOpacity;
+    }
+
+    // Rotating stars logic...
     const gst = utcHours + 0.0657098244 * day + 6.6;
     const lst = (gst + userLon / 15) % 24;
-
     starsGroup.rotation.set(0, 0, 0);
     const siderealAngle = THREE.MathUtils.degToRad(lst * 15);
     starsMesh.rotation.y = -siderealAngle;
@@ -337,19 +446,41 @@ function animate(time) {
         lastTime = time;
     }
 
-    // --- Particle Animation (The "Warp") ---
-    targetX = mouseX * 0.001;
-    targetY = mouseY * 0.001;
+    // --- Particle Animation ---
+    const positions = particlesGeometry.attributes.position.array;
 
-    // Smooth rotation of particle cloud
-    particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
-    particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
-    particlesMesh.rotation.y += 0.002; // Constant spin
+    if (weatherState.condition === 'rain' || weatherState.condition === 'snow') {
+        const fallSpeed = weatherState.condition === 'rain' ? 0.8 : 0.2;
+        // Reset rotation for rain/snow to vertical fall
+        particlesMesh.rotation.set(0, 0, 0);
 
-    // Gentle camera movement
-    camera.position.x += (mouseX * 0.05 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 0.05 - camera.position.y) * 0.05;
-    camera.lookAt(scene.position);
+        for (let i = 1; i < positions.length; i += 3) {
+            positions[i] -= fallSpeed;
+            if (positions[i] < -20) {
+                positions[i] = 20; // Reset to top
+            }
+        }
+        particlesGeometry.attributes.position.needsUpdate = true;
+    } else {
+        // Normal "Warp" Effect (Clear/Cloudy)
+        // Reset/Keep random positions? The original warp logic assumes static positions but rotating mesh.
+        // If we switch back from rain to clear, the positions are messed up? 
+        // Ideally we should reset positions or just accept the chaotic state. 
+        // For simplicity, we just rotate the mesh as before.
+
+        targetX = mouseX * 0.001;
+        targetY = mouseY * 0.001;
+
+        // Smooth rotation of particle cloud
+        particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
+        particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
+        particlesMesh.rotation.y += 0.002; // Constant spin
+
+        // Gentle camera movement
+        camera.position.x += (mouseX * 0.05 - camera.position.x) * 0.05;
+        camera.position.y += (-mouseY * 0.05 - camera.position.y) * 0.05;
+        camera.lookAt(scene.position);
+    }
 
     renderer.render(scene, camera);
 }
