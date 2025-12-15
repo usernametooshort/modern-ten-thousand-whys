@@ -788,59 +788,46 @@ class SolarSystemApp {
     }
 
     createSpiralGalaxy() {
-        // DRAMATIC DEEP SPACE: High visibility nebulae + dense starfield
+        // REALISTIC TELESCOPE VIEW: Mostly black with subtle Milky Way and nebulae
         const textureLoader = new THREE.TextureLoader();
 
-        // 1. FARTHEST LAYER - Deep space nebula (base layer, full visibility)
-        const farNebulaTex = textureLoader.load('./textures/nebula_far.png');
-        farNebulaTex.colorSpace = THREE.SRGBColorSpace;
-        const farNebulaGeo = new THREE.SphereGeometry(9500, 64, 64);
-        const farNebulaMat = new THREE.MeshBasicMaterial({
-            map: farNebulaTex,
-            side: THREE.BackSide,
-            transparent: true,
-            opacity: 1.0, // Full visibility
-            depthWrite: false
-        });
-        const farNebula = new THREE.Mesh(farNebulaGeo, farNebulaMat);
-        farNebula.renderOrder = -1003;
-        this.scene.add(farNebula);
+        // 1. PURE BLACK BASE - The vast emptiness of space
+        // (Already set in createScene as scene.background = black)
 
-        // 2. MIDDLE LAYER - Milky Way band (prominent)
+        // 2. MILKY WAY BAND - Subtle, positioned as a band across the sky
         const milkyWayTex = textureLoader.load('./textures/milky_way.png');
         milkyWayTex.colorSpace = THREE.SRGBColorSpace;
-        const milkyWayGeo = new THREE.SphereGeometry(8000, 64, 64);
+        const milkyWayGeo = new THREE.SphereGeometry(9500, 64, 64);
         const milkyWayMat = new THREE.MeshBasicMaterial({
             map: milkyWayTex,
             side: THREE.BackSide,
             transparent: true,
-            opacity: 0.85, // Very visible
-            blending: THREE.AdditiveBlending, // Additive for glow effect
+            opacity: 0.25, // Subtle, not overwhelming
+            blending: THREE.AdditiveBlending,
             depthWrite: false
         });
         const milkyWay = new THREE.Mesh(milkyWayGeo, milkyWayMat);
-        milkyWay.rotation.x = Math.PI * 0.15;
-        milkyWay.rotation.z = Math.PI * 0.1;
+        milkyWay.rotation.x = Math.PI * 0.5; // Position as band across equator
         milkyWay.renderOrder = -1002;
         this.scene.add(milkyWay);
 
-        // 3. CLOSER LAYER - Colorful emission nebulae (additive glow)
-        const midNebulaTex = textureLoader.load('./textures/nebula_mid.png');
-        midNebulaTex.colorSpace = THREE.SRGBColorSpace;
-        const midNebulaGeo = new THREE.SphereGeometry(6000, 64, 64);
-        const midNebulaMat = new THREE.MeshBasicMaterial({
-            map: midNebulaTex,
+        // 3. DISTANT NEBULA - Very faint, just hints of color in the black
+        const nebulaTex = textureLoader.load('./textures/nebula_mid.png');
+        nebulaTex.colorSpace = THREE.SRGBColorSpace;
+        const nebulaGeo = new THREE.SphereGeometry(9000, 64, 64);
+        const nebulaMat = new THREE.MeshBasicMaterial({
+            map: nebulaTex,
             side: THREE.BackSide,
             transparent: true,
-            opacity: 0.7, // Prominent
-            blending: THREE.AdditiveBlending, // Glow effect
+            opacity: 0.15, // Very subtle
+            blending: THREE.AdditiveBlending,
             depthWrite: false
         });
-        const midNebula = new THREE.Mesh(midNebulaGeo, midNebulaMat);
-        midNebula.rotation.y = Math.PI * 0.4;
-        midNebula.rotation.x = -Math.PI * 0.1;
-        midNebula.renderOrder = -1001;
-        this.scene.add(midNebula);
+        const nebula = new THREE.Mesh(nebulaGeo, nebulaMat);
+        nebula.rotation.y = Math.PI * 0.6;
+        nebula.rotation.z = Math.PI * 0.2;
+        nebula.renderOrder = -1003;
+        this.scene.add(nebula);
 
         // 4. PROCEDURAL STARFIELD - Sharp, crisp stars as 3D particles
         const starCount = 80000; // Even denser
