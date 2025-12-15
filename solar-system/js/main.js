@@ -688,445 +688,443 @@ class SolarSystemApp {
                 planet.add(atmo);
             }
 
-            const atmo = new THREE.Mesh(atmoGeo, atmoMat);
-            planet.add(atmo);
-        }
+
 
             // Cloud Layer for Earth
             if (data.type === 'earth') {
-            const cloudGeo = new THREE.SphereGeometry(data.size * 1.02, 64, 64);
-            // Simple noise cloud texture
-            const cloudCanvas = document.createElement('canvas');
-            cloudCanvas.width = 1024; cloudCanvas.height = 512;
-            const cCtx = cloudCanvas.getContext('2d');
-            const cImg = cCtx.createImageData(1024, 512);
-            for (let i = 0; i < cImg.data.length; i += 4) {
-                // Reuse simplex noise... we need to access it or duplicate logic. 
-                // Let's use a simple random noise here for speed or assume transparency
-                // Better: use the simplex instance we added.
-                const x = (i / 4) % 1024;
-                const y = Math.floor((i / 4) / 1024);
-                // Use higher freq noise for clouds
-                const nx = (x / 1024) * Math.PI * 2;
-                const ny = (y / 512) * 2;
-                let n = simplex.noise(Math.cos(nx) * 4 + 20, Math.sin(nx) * 4 + ny * 4); // Offset to avoid continent match
+                const cloudGeo = new THREE.SphereGeometry(data.size * 1.02, 64, 64);
+                // Simple noise cloud texture
+                const cloudCanvas = document.createElement('canvas');
+                cloudCanvas.width = 1024; cloudCanvas.height = 512;
+                const cCtx = cloudCanvas.getContext('2d');
+                const cImg = cCtx.createImageData(1024, 512);
+                for (let i = 0; i < cImg.data.length; i += 4) {
+                    // Reuse simplex noise... we need to access it or duplicate logic. 
+                    // Let's use a simple random noise here for speed or assume transparency
+                    // Better: use the simplex instance we added.
+                    const x = (i / 4) % 1024;
+                    const y = Math.floor((i / 4) / 1024);
+                    // Use higher freq noise for clouds
+                    const nx = (x / 1024) * Math.PI * 2;
+                    const ny = (y / 512) * 2;
+                    let n = simplex.noise(Math.cos(nx) * 4 + 20, Math.sin(nx) * 4 + ny * 4); // Offset to avoid continent match
 
-                const val = (n > 0.2) ? 255 : 0; // Cloud threshold
-                const alpha = (n > 0.2) ? 200 : 0;
-                cImg.data[i] = 255;
-                cImg.data[i + 1] = 255;
-                cImg.data[i + 2] = 255;
-                cImg.data[i + 3] = alpha;
+                    const val = (n > 0.2) ? 255 : 0; // Cloud threshold
+                    const alpha = (n > 0.2) ? 200 : 0;
+                    cImg.data[i] = 255;
+                    cImg.data[i + 1] = 255;
+                    cImg.data[i + 2] = 255;
+                    cImg.data[i + 3] = alpha;
+                }
+                cCtx.putImageData(cImg, 0, 0);
+                const cloudTex = new THREE.CanvasTexture(cloudCanvas);
+                const cloudMat = new THREE.MeshStandardMaterial({
+                    map: cloudTex,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide // Visible from inside? No.
+                });
+                const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+                clouds.isClouds = true; // For animation
+                planet.add(clouds);
             }
-            cCtx.putImageData(cImg, 0, 0);
-            const cloudTex = new THREE.CanvasTexture(cloudCanvas);
-            const cloudMat = new THREE.MeshStandardMaterial({
-                map: cloudTex,
-                transparent: true,
-                opacity: 0.8,
-                side: THREE.DoubleSide // Visible from inside? No.
-            });
-            const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-            clouds.isClouds = true; // For animation
-            planet.add(clouds);
-        }
 
-        if (data.rings) {
-            const ringGeo = new THREE.RingGeometry(data.size * data.rings.inner, data.size * data.rings.outer, 128);
-            const ringTex = this.generateRingTexture(data.rings.color);
-            const ringMat = new THREE.MeshStandardMaterial({
-                map: ringTex,
-                color: 0xffffff,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: data.rings.opacity || 0.9
-            });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = Math.PI / 2;
-            ring.rotation.y = -Math.PI / 8;
-            ring.receiveShadow = true;
-            planet.add(ring);
-        }
+            if (data.rings) {
+                const ringGeo = new THREE.RingGeometry(data.size * data.rings.inner, data.size * data.rings.outer, 128);
+                const ringTex = this.generateRingTexture(data.rings.color);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    map: ringTex,
+                    color: 0xffffff,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: data.rings.opacity || 0.9
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                ring.rotation.y = -Math.PI / 8;
+                ring.receiveShadow = true;
+                planet.add(ring);
+            }
 
-        this.planets.push({
-            mesh: planet,
-            distance: data.distance,
-            angle: Math.random() * Math.PI * 2,
-            speed: data.speed,
-            rotationSpeed: data.rotationSpeed,
-            data: data
+            this.planets.push({
+                mesh: planet,
+                distance: data.distance,
+                angle: Math.random() * Math.PI * 2,
+                speed: data.speed,
+                rotationSpeed: data.rotationSpeed,
+                data: data
+            });
         });
-    });
-}
-
-createAsteroidBelt() {
-    const count = 2000;
-    const geometry = new THREE.IcosahedronGeometry(0.3, 0);
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x888888,
-        roughness: 0.9,
-        metalness: 0.1
-    });
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
-    const dummy = new THREE.Object3D();
-
-    for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = THREE.MathUtils.randFloat(85, 95);
-        const y = THREE.MathUtils.randFloatSpread(4);
-
-        dummy.position.set(
-            Math.cos(angle) * r,
-            y,
-            Math.sin(angle) * r
-        );
-        dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-        const s = Math.random() * 0.5 + 0.5;
-        dummy.scale.set(s, s, s);
-        dummy.updateMatrix();
-        instancedMesh.setMatrixAt(i, dummy.matrix);
     }
 
-    this.scene.add(instancedMesh);
-    this.asteroidBelt = instancedMesh;
-}
+    createAsteroidBelt() {
+        const count = 2000;
+        const geometry = new THREE.IcosahedronGeometry(0.3, 0);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+        const dummy = new THREE.Object3D();
 
-generatePlanetTexture(data) {
-    // High-res texture for realism
-    // High-res texture for realism
-    const width = 2048;
-    const height = 1024;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    const imgData = ctx.createImageData(width, height);
-    const d = imgData.data;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = THREE.MathUtils.randFloat(85, 95);
+            const y = THREE.MathUtils.randFloatSpread(4);
 
-    const baseColor = new THREE.Color(data.color);
+            dummy.position.set(
+                Math.cos(angle) * r,
+                y,
+                Math.sin(angle) * r
+            );
+            dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+            const s = Math.random() * 0.5 + 0.5;
+            dummy.scale.set(s, s, s);
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+        }
 
-    // Normalize color helper
-    const setPixel = (i, r, g, b, a = 255) => {
-        d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a;
-    };
+        this.scene.add(instancedMesh);
+        this.asteroidBelt = instancedMesh;
+    }
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
+    generatePlanetTexture(data) {
+        // High-res texture for realism
+        // High-res texture for realism
+        const width = 2048;
+        const height = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.createImageData(width, height);
+        const d = imgData.data;
 
-            // Normalized coords
-            const nx = x / width;
-            const ny = y / height;
+        const baseColor = new THREE.Color(data.color);
 
-            // Wrap x for seamlessness (simple trick: noise uses sin/cos of x)
-            // We map x to angle 0..2PI
-            const angle = nx * Math.PI * 2;
-            const fx = Math.cos(angle);
-            const fz = Math.sin(angle); // cylinder mapping for noise seamlessness in x
-            const fy = ny * 2; // Stretch y
+        // Normalize color helper
+        const setPixel = (i, r, g, b, a = 255) => {
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a;
+        };
 
-            if (data.type === 'gas') {
-                // Gas Giant: Distorted Bands
-                // Base turbulence
-                const scale = data.nameKey.includes('jupiter') ? 4.0 : 8.0;
-                const noiseVal = simplex.noise(fx * scale, fy * scale + (data.nameKey.includes('jupiter') ? 0 : fy * 5));
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4;
 
-                // Band structure
-                const bandFreq = data.nameKey.includes('jupiter') ? 10 : 30;
-                const band = Math.sin(ny * bandFreq + noiseVal * 2.0); // Distort bands with noise
+                // Normalized coords
+                const nx = x / width;
+                const ny = y / height;
 
-                // Color mapping
-                const col1 = new THREE.Color(data.bandColor1 || data.color);
-                const col2 = new THREE.Color(data.bandColor2 || data.color);
+                // Wrap x for seamlessness (simple trick: noise uses sin/cos of x)
+                // We map x to angle 0..2PI
+                const angle = nx * Math.PI * 2;
+                const fx = Math.cos(angle);
+                const fz = Math.sin(angle); // cylinder mapping for noise seamlessness in x
+                const fy = ny * 2; // Stretch y
 
-                // Mix based on band + noise
-                const mix = (band * 0.5 + 0.5) * 0.7 + (noiseVal * 0.3);
-                col1.lerp(col2, mix);
+                if (data.type === 'gas') {
+                    // Gas Giant: Distorted Bands
+                    // Base turbulence
+                    const scale = data.nameKey.includes('jupiter') ? 4.0 : 8.0;
+                    const noiseVal = simplex.noise(fx * scale, fy * scale + (data.nameKey.includes('jupiter') ? 0 : fy * 5));
 
-                setPixel(i, col1.r * 255, col1.g * 255, col1.b * 255);
+                    // Band structure
+                    const bandFreq = data.nameKey.includes('jupiter') ? 10 : 30;
+                    const band = Math.sin(ny * bandFreq + noiseVal * 2.0); // Distort bands with noise
 
-            } else if (data.type === 'earth') {
-                // Earth: Land vs Sea
-                // Noise scale for continents
-                const nScale = 1.5;
-                // Detail noise
-                let n = simplex.noise(fx * nScale, fy * nScale);
-                n += 0.5 * simplex.noise(fx * nScale * 2, fy * nScale * 2);
-                n += 0.25 * simplex.noise(fx * nScale * 4, fy * nScale * 4);
+                    // Color mapping
+                    const col1 = new THREE.Color(data.bandColor1 || data.color);
+                    const col2 = new THREE.Color(data.bandColor2 || data.color);
 
-                const seaLevel = 0.05; // Threshold
+                    // Mix based on band + noise
+                    const mix = (band * 0.5 + 0.5) * 0.7 + (noiseVal * 0.3);
+                    col1.lerp(col2, mix);
 
-                if (n > seaLevel) {
-                    // Land
-                    // Gradient based on height (n)
-                    const landLow = new THREE.Color(0x2a5a3a); // Green
-                    const landHigh = new THREE.Color(0x8B4513); // Brown
-                    const snow = new THREE.Color(0xffffff); // White
+                    setPixel(i, col1.r * 255, col1.g * 255, col1.b * 255);
 
-                    let c = landLow.clone();
-                    if (n > 0.45) c.lerp(landHigh, (n - 0.45) * 3);
-                    if (n > 0.7) c.lerp(snow, (n - 0.7) * 4);
+                } else if (data.type === 'earth') {
+                    // Earth: Land vs Sea
+                    // Noise scale for continents
+                    const nScale = 1.5;
+                    // Detail noise
+                    let n = simplex.noise(fx * nScale, fy * nScale);
+                    n += 0.5 * simplex.noise(fx * nScale * 2, fy * nScale * 2);
+                    n += 0.25 * simplex.noise(fx * nScale * 4, fy * nScale * 4);
 
-                    // Pole logic (simple y check)
-                    if (ny < 0.1 || ny > 0.9) c.lerp(snow, 0.8);
+                    const seaLevel = 0.05; // Threshold
 
-                    setPixel(i, c.r * 255, c.g * 255, c.b * 255);
+                    if (n > seaLevel) {
+                        // Land
+                        // Gradient based on height (n)
+                        const landLow = new THREE.Color(0x2a5a3a); // Green
+                        const landHigh = new THREE.Color(0x8B4513); // Brown
+                        const snow = new THREE.Color(0xffffff); // White
+
+                        let c = landLow.clone();
+                        if (n > 0.45) c.lerp(landHigh, (n - 0.45) * 3);
+                        if (n > 0.7) c.lerp(snow, (n - 0.7) * 4);
+
+                        // Pole logic (simple y check)
+                        if (ny < 0.1 || ny > 0.9) c.lerp(snow, 0.8);
+
+                        setPixel(i, c.r * 255, c.g * 255, c.b * 255);
+                    } else {
+                        // Ocean
+                        const deep = new THREE.Color(0x000520);
+                        const shallow = new THREE.Color(0x0044aa);
+                        // Depth based on n (simulated)
+                        let c = shallow.clone().lerp(deep, 1 - (n + 1));
+                        setPixel(i, c.r * 255, c.g * 255, c.b * 255);
+                    }
+
                 } else {
-                    // Ocean
-                    const deep = new THREE.Color(0x000520);
-                    const shallow = new THREE.Color(0x0044aa);
-                    // Depth based on n (simulated)
-                    let c = shallow.clone().lerp(deep, 1 - (n + 1));
+                    // Rocky: Craters / Noise
+                    let n = simplex.noise(fx * 10, fy * 10);
+                    // Add distinctive color variation
+                    const c = baseColor.clone();
+                    c.offsetHSL(0, 0, n * 0.1);
                     setPixel(i, c.r * 255, c.g * 255, c.b * 255);
                 }
-
-            } else {
-                // Rocky: Craters / Noise
-                let n = simplex.noise(fx * 10, fy * 10);
-                // Add distinctive color variation
-                const c = baseColor.clone();
-                c.offsetHSL(0, 0, n * 0.1);
-                setPixel(i, c.r * 255, c.g * 255, c.b * 255);
             }
         }
+
+        ctx.putImageData(imgData, 0, 0);
+        const map = new THREE.CanvasTexture(canvas);
+        map.colorSpace = THREE.SRGBColorSpace;
+
+        return { map: map, bump: map }; // Bump map same for now
     }
 
-    ctx.putImageData(imgData, 0, 0);
-    const map = new THREE.CanvasTexture(canvas);
-    map.colorSpace = THREE.SRGBColorSpace;
+    generateRingTexture(hexColor) {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
 
-    return { map: map, bump: map }; // Bump map same for now
-}
+        const baseColor = new THREE.Color(hexColor);
 
-generateRingTexture(hexColor) {
-    const size = 512;
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(0,0,0,0)';
+        ctx.clearRect(0, 0, 64, 512);
 
-    const baseColor = new THREE.Color(hexColor);
+        for (let y = 0; y < 512; y++) {
+            const intensity = 0.5 + Math.random() * 0.5;
+            const gap = Math.random() > 0.95;
+            if (!gap) {
+                const col = baseColor.clone().multiplyScalar(0.8 + Math.random() * 0.4);
+                ctx.fillStyle = `rgba(${col.r * 255},${col.g * 255},${col.b * 255},${intensity})`;
+                ctx.fillRect(0, y, 64, 1);
+            }
+        }
 
-    ctx.fillStyle = 'rgba(0,0,0,0)';
-    ctx.clearRect(0, 0, 64, 512);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+    }
 
-    for (let y = 0; y < 512; y++) {
-        const intensity = 0.5 + Math.random() * 0.5;
-        const gap = Math.random() > 0.95;
-        if (!gap) {
-            const col = baseColor.clone().multiplyScalar(0.8 + Math.random() * 0.4);
-            ctx.fillStyle = `rgba(${col.r * 255},${col.g * 255},${col.b * 255},${intensity})`;
-            ctx.fillRect(0, y, 64, 1);
+    createGlowTexture(options = {}) {
+        const size = options.size || 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        gradient.addColorStop(0, options.inner || 'rgba(255,255,255,1)');
+        gradient.addColorStop(1, options.outer || 'rgba(255,255,255,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+    }
+
+    updatePlanets(delta) {
+        if (!this.isPlaying) return;
+
+        this.planets.forEach(p => {
+            p.angle += p.speed * delta * CONFIG.orbitSpeedMultiplier * this.timeScale;
+            p.mesh.position.x = Math.cos(p.angle) * p.distance;
+            p.mesh.position.z = Math.sin(p.angle) * p.distance;
+            p.mesh.rotation.y += p.rotationSpeed * delta * 0.5;
+
+            // Rotate clouds
+            p.mesh.children.forEach(child => {
+                if (child.isClouds) {
+                    child.rotation.y += delta * 0.05;
+                }
+            });
+        });
+
+        if (this.asteroidBelt) {
+            this.asteroidBelt.rotation.y += delta * 0.02 * CONFIG.orbitSpeedMultiplier * this.timeScale;
         }
     }
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-}
+    setupEventListeners() {
+        window.addEventListener('resize', () => {
+            this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        });
 
-createGlowTexture(options = {}) {
-    const size = options.size || 64;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, options.inner || 'rgba(255,255,255,1)');
-    gradient.addColorStop(1, options.outer || 'rgba(255,255,255,0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, size, size);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-}
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
 
-updatePlanets(delta) {
-    if (!this.isPlaying) return;
+            this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    this.planets.forEach(p => {
-        p.angle += p.speed * delta * CONFIG.orbitSpeedMultiplier * this.timeScale;
-        p.mesh.position.x = Math.cos(p.angle) * p.distance;
-        p.mesh.position.z = Math.sin(p.angle) * p.distance;
-        p.mesh.rotation.y += p.rotationSpeed * delta * 0.5;
+            const meshes = this.planets.map(p => p.mesh);
+            const intersects = this.raycaster.intersectObjects(meshes, false);
 
-        // Rotate clouds
-        p.mesh.children.forEach(child => {
-            if (child.isClouds) {
-                child.rotation.y += delta * 0.05;
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                const pData = this.planets.find(p => p.mesh === hit);
+                if (pData) this.showInfo(pData.data);
             }
         });
-    });
 
-    if (this.asteroidBelt) {
-        this.asteroidBelt.rotation.y += delta * 0.02 * CONFIG.orbitSpeedMultiplier * this.timeScale;
+        // Language Change Event
+        window.addEventListener('languageChanged', () => {
+            this.updateUI();
+            if (this.selectedPlanetData) {
+                this.showInfo(this.selectedPlanetData);
+            }
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', (e) => {
+            this.isPlaying = !this.isPlaying;
+            this.updateUI();
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            this.controls.reset();
+            this.camera.position.set(0, 120, 220);
+        });
+
+        document.getElementById('slider-speed').addEventListener('input', (e) => {
+            this.timeScale = parseFloat(e.target.value);
+        });
+
+        document.getElementById('toggle-orbits').addEventListener('change', (e) => {
+            this.orbits.forEach(o => o.visible = e.target.checked);
+        });
+
+        const mobileInfoToggle = document.getElementById('mobile-info-toggle');
+        if (mobileInfoToggle) {
+            mobileInfoToggle.addEventListener('click', () => {
+                const panel = document.querySelector('.info-panel');
+                if (panel) panel.classList.toggle('open');
+            });
+        }
     }
-}
 
-setupEventListeners() {
-    window.addEventListener('resize', () => {
-        this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-    });
-
-    window.addEventListener('click', (e) => {
-        if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
-
-        this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-
-        const meshes = this.planets.map(p => p.mesh);
-        const intersects = this.raycaster.intersectObjects(meshes, false);
-
-        if (intersects.length > 0) {
-            const hit = intersects[0].object;
-            const pData = this.planets.find(p => p.mesh === hit);
-            if (pData) this.showInfo(pData.data);
+    updateUI() {
+        const pauseBtn = document.getElementById('btn-pause');
+        if (pauseBtn) {
+            const key = this.isPlaying ? 'btn_pause' : 'btn_resume';
+            pauseBtn.textContent = window.i18n.get(key);
         }
-    });
+    }
 
-    // Language Change Event
-    window.addEventListener('languageChanged', () => {
-        this.updateUI();
-        if (this.selectedPlanetData) {
-            this.showInfo(this.selectedPlanetData);
-        }
-    });
+    showInfo(data) {
+        this.selectedPlanetData = data; // Store for re-translation
+        const panel = document.getElementById('planet-info');
+        const desc = document.querySelector('.description');
+        const name = document.getElementById('info-name');
+        const detail = document.getElementById('info-details');
+        const facts = document.getElementById('info-facts');
 
-    document.getElementById('btn-pause').addEventListener('click', (e) => {
-        this.isPlaying = !this.isPlaying;
-        this.updateUI();
-    });
+        panel.classList.remove('hidden');
+        if (desc) desc.style.display = 'none';
 
-    document.getElementById('btn-reset').addEventListener('click', () => {
-        this.controls.reset();
-        this.camera.position.set(0, 120, 220);
-    });
+        name.textContent = window.i18n.get(data.nameKey);
+        detail.textContent = window.i18n.get(data.descKey);
 
-    document.getElementById('slider-speed').addEventListener('input', (e) => {
-        this.timeScale = parseFloat(e.target.value);
-    });
+        facts.innerHTML = '';
+        data.facts.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'fact-card';
+            const label = window.i18n.get(f.labelKey);
+            // Value might be a key or a value
+            // If value starts with 'solar_', it's a key? Or check if translation exists?
+            // Current data has some hardcoded values like "88 d" and some keys like "solar_planet_mercury".
+            // Let's check if value exists in i18n, else use value.
+            // A simple heuristic: if value looks like a key (contains underscore), try translating.
+            // But "88 d" doesn't.
+            let value = f.value;
+            // Hardcoded values with units (d, y, etc) should ideally be formatted, but for now keeping as is unless it's a clear key.
+            // Actually, keys were used for some values in my PLANET_DATA update above.
+            // e.g., valueKey: "solar_planet_mercury"
 
-    document.getElementById('toggle-orbits').addEventListener('change', (e) => {
-        this.orbits.forEach(o => o.visible = e.target.checked);
-    });
+            if (f.valueKey) {
+                value = window.i18n.get(f.valueKey);
+            }
 
-    const mobileInfoToggle = document.getElementById('mobile-info-toggle');
-    if (mobileInfoToggle) {
-        mobileInfoToggle.addEventListener('click', () => {
-            const panel = document.querySelector('.info-panel');
-            if (panel) panel.classList.toggle('open');
+            div.innerHTML = `<div class="fact-label">${label}</div><div class="fact-value">${value}</div>`;
+            facts.appendChild(div);
         });
     }
-}
 
-updateUI() {
-    const pauseBtn = document.getElementById('btn-pause');
-    if (pauseBtn) {
-        const key = this.isPlaying ? 'btn_pause' : 'btn_resume';
-        pauseBtn.textContent = window.i18n.get(key);
+    createBgStars() {
+        // Thousands of tiny stars far away
+        const count = 5000;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        const size = new Float32Array(count);
+        for (let i = 0; i < count * 3; i += 3) {
+            const r = 2000 + Math.random() * 2000;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
+            pos[i] = r * Math.sin(phi) * Math.cos(theta);
+            pos[i + 1] = r * Math.cos(phi);
+            pos[i + 2] = r * Math.sin(phi) * Math.sin(theta);
+            size[i / 3] = Math.random() * 2.0;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('size', new THREE.BufferAttribute(size, 1));
+        const mat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 1.5,
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.8,
+            map: this.createGlowTexture({ size: 32 }),
+            depthWrite: false
+        });
+        this.scene.add(new THREE.Points(geo, mat));
     }
-}
 
-showInfo(data) {
-    this.selectedPlanetData = data; // Store for re-translation
-    const panel = document.getElementById('planet-info');
-    const desc = document.querySelector('.description');
-    const name = document.getElementById('info-name');
-    const detail = document.getElementById('info-details');
-    const facts = document.getElementById('info-facts');
+    render() {
+        const delta = this.clock.getDelta();
+        this.uniforms.time.value += delta;
 
-    panel.classList.remove('hidden');
-    if (desc) desc.style.display = 'none';
-
-    name.textContent = window.i18n.get(data.nameKey);
-    detail.textContent = window.i18n.get(data.descKey);
-
-    facts.innerHTML = '';
-    data.facts.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'fact-card';
-        const label = window.i18n.get(f.labelKey);
-        // Value might be a key or a value
-        // If value starts with 'solar_', it's a key? Or check if translation exists?
-        // Current data has some hardcoded values like "88 d" and some keys like "solar_planet_mercury".
-        // Let's check if value exists in i18n, else use value.
-        // A simple heuristic: if value looks like a key (contains underscore), try translating.
-        // But "88 d" doesn't.
-        let value = f.value;
-        // Hardcoded values with units (d, y, etc) should ideally be formatted, but for now keeping as is unless it's a clear key.
-        // Actually, keys were used for some values in my PLANET_DATA update above.
-        // e.g., valueKey: "solar_planet_mercury"
-
-        if (f.valueKey) {
-            value = window.i18n.get(f.valueKey);
+        // Galaxy Rotation
+        if (this.galaxyMesh) {
+            this.galaxyMesh.rotation.y += delta * 0.02;
         }
 
-        div.innerHTML = `<div class="fact-label">${label}</div><div class="fact-value">${value}</div>`;
-        facts.appendChild(div);
-    });
-}
-
-createBgStars() {
-    // Thousands of tiny stars far away
-    const count = 5000;
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(count * 3);
-    const size = new Float32Array(count);
-    for (let i = 0; i < count * 3; i += 3) {
-        const r = 2000 + Math.random() * 2000;
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
-        pos[i] = r * Math.sin(phi) * Math.cos(theta);
-        pos[i + 1] = r * Math.cos(phi);
-        pos[i + 2] = r * Math.sin(phi) * Math.sin(theta);
-        size[i / 3] = Math.random() * 2.0;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('size', new THREE.BufferAttribute(size, 1));
-    const mat = new THREE.PointsMaterial({
-        color: 0xffffff,
-        size: 1.5,
-        sizeAttenuation: true,
-        transparent: true,
-        opacity: 0.8,
-        map: this.createGlowTexture({ size: 32 }),
-        depthWrite: false
-    });
-    this.scene.add(new THREE.Points(geo, mat));
-}
-
-render() {
-    const delta = this.clock.getDelta();
-    this.uniforms.time.value += delta;
-
-    // Galaxy Rotation
-    if (this.galaxyMesh) {
-        this.galaxyMesh.rotation.y += delta * 0.02;
-    }
-
-    // Intro Animation
-    if (this.doingIntro) {
-        this.introProgress += delta * 0.5; // 2 seconds intro
-        if (this.introProgress >= 1.0) {
-            this.introProgress = 1.0;
-            this.doingIntro = false;
+        // Intro Animation
+        if (this.doingIntro) {
+            this.introProgress += delta * 0.5; // 2 seconds intro
+            if (this.introProgress >= 1.0) {
+                this.introProgress = 1.0;
+                this.doingIntro = false;
+            }
+            // Ease out cubic
+            const t = 1 - Math.pow(1 - this.introProgress, 3);
+            this.camera.position.lerpVectors(new THREE.Vector3(0, 800, 1200), this.targetCameraPos, t);
+            this.camera.lookAt(0, 0, 0);
+        } else {
+            this.controls.update();
         }
-        // Ease out cubic
-        const t = 1 - Math.pow(1 - this.introProgress, 3);
-        this.camera.position.lerpVectors(new THREE.Vector3(0, 800, 1200), this.targetCameraPos, t);
-        this.camera.lookAt(0, 0, 0);
-    } else {
-        this.controls.update();
+
+        this.updatePlanets(delta);
+
+        this.renderer.render(this.scene, this.camera);
     }
-
-    this.updatePlanets(delta);
-
-    this.renderer.render(this.scene, this.camera);
-}
 }
 
 new SolarSystemApp();
