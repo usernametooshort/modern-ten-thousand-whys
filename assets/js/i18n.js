@@ -181,6 +181,7 @@ const translations = {
         updated_time: "更新时间",
         released_time: "上线时间",
         cta_enter: "进入体验",
+        hero_cta_start: "开始探索",
         back_to_top: "回到顶部",
         back_to_home: "← 返回目录",
         footer_text: "© 2025 十万个为什么 3D · 静态部署版",
@@ -526,6 +527,7 @@ const translations = {
         updated_time: "Updated",
         released_time: "Released",
         cta_enter: "Launch",
+        hero_cta_start: "Start Exploring",
         back_to_top: "Top",
         back_to_home: "← Back to Directory",
         footer_text: "© 2025 10,000 Whys 3D · Static Deployment",
@@ -871,6 +873,7 @@ const translations = {
         updated_time: "Aktualisiert",
         released_time: "Veröffentlicht",
         cta_enter: "Starten",
+        hero_cta_start: "Entdecken",
         back_to_top: "Nach oben",
         back_to_home: "← Zurück zum Verzeichnis",
         footer_text: "© 2025 10.000 Warums 3D · Statische Version",
@@ -1067,7 +1070,7 @@ class I18n {
 
         // Simple replacement for {param}
         for (const [k, v] of Object.entries(params)) {
-            text = text.replace(`{${k}}`, v);
+            text = text.replace(new RegExp(`{${k}}`, 'gi'), v);
         }
         return text;
     }
@@ -1076,17 +1079,17 @@ class I18n {
         const elements = document.querySelectorAll('[data-i18n]');
         elements.forEach(el => {
             const key = el.getAttribute('data-i18n');
-            const text = this.get(key);
+            const count = el.getAttribute('data-count');
+
+            // Should pass count if exists
+            let params = {};
+            if (count !== null) {
+                params.count = count;
+            }
+
+            const text = this.get(key, params);
             if (text && text !== key) {
-                const count = el.getAttribute('data-count'); // Handle count params if any
-                if (count) {
-                    el.textContent = this.get(key, { count });
-                } else {
-                    // Preserve HTML structure if needed? Usually textContent is safer.
-                    // But some descriptions might need <br>.
-                    // For now textContent.
-                    el.textContent = text;
-                }
+                el.textContent = text;
             }
         });
     }

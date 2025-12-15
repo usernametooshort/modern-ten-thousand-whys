@@ -733,17 +733,37 @@ footer {
 
 @media (max-width: 600px) {
     .site-header {
-        padding: 0 20px;
+        padding: 10px 15px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .site-header .logo {
+        font-size: 1.1rem;
     }
 
     .location-badge {
         display: flex;
-        /* Show on mobile */
-        margin: 10px 0;
-        /* Add some spacing */
-        font-size: 0.7rem;
-        /* Smaller font */
-        width: fit-content;
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        margin: 0;
+        width: 100%;
+        /* Force new line? No, let's wrap */
+        order: 3;
+        /* Move to bottom of header if wrapping */
+        background: rgba(0, 0, 0, 0.3);
+        justify-content: center;
+    }
+
+    .site-header nav {
+        gap: 10px;
+    }
+
+    .lang-switcher .lang-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
     }
 
     .hero {
