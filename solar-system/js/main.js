@@ -877,7 +877,7 @@ class SolarSystemApp {
         stars.renderOrder = -999;
         this.scene.add(stars);
 
-        this.galaxyMesh = farNebula;
+        this.galaxyMesh = nebula;
     }
 
     performIntro() {
