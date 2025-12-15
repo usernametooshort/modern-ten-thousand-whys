@@ -1,67 +1,131 @@
-const canvas = document.getElementById('bg-canvas');
-const ctx = canvas.getContext('2d');
+import * as THREE from 'three';
 
-const STAR_COUNT = 400;
-const stars = [];
+// --- Scene Setup ---
+const canvas = document.getElementById('bg-canvas');
+const scene = new THREE.Scene();
+
+// Camera setup
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 5;
+
+// Renderer setup
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    alpha: true,
+    antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// --- Particles ---
+const particlesGeometry = new THREE.BufferGeometry();
+const particlesCount = 2000;
+const posArray = new Float32Array(particlesCount * 3);
+
+for (let i = 0; i < particlesCount * 3; i++) {
+    // Spread particles in a wide area
+    posArray[i] = (Math.random() - 0.5) * 15;
+}
+
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+// Create a custom material for glowing dots
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.02,
+    color: 0x00f3ff, // Cyan accent
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending
+});
+
+const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particlesMesh);
+
+// Secondary particles (Stars far away)
+const starsGeometry = new THREE.BufferGeometry();
+const starsCount = 3000;
+const starsPosArray = new Float32Array(starsCount * 3);
+
+for (let i = 0; i < starsCount * 3; i++) {
+    starsPosArray[i] = (Math.random() - 0.5) * 30;
+}
+
+starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPosArray, 3));
+
+const starsMaterial = new THREE.PointsMaterial({
+    size: 0.015,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.4
+});
+
+const starsMesh = new THREE.Points(starsGeometry, starsMaterial);
+scene.add(starsMesh);
+
+
+// --- Interaction ---
 let mouseX = 0;
 let mouseY = 0;
-let pixelRatio = window.devicePixelRatio || 1;
+let targetX = 0;
+let targetY = 0;
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth * pixelRatio;
-    canvas.height = window.innerHeight * pixelRatio;
-    ctx.scale(pixelRatio, pixelRatio);
-}
+const windowHalfX = window.innerWidth / 2;
+const windowHalfY = window.innerHeight / 2;
 
-function createStars() {
-    stars.length = 0;
-    for (let i = 0; i < STAR_COUNT; i++) {
-        stars.push({
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
-            radius: Math.random() * 1.5 + 0.2,
-            speed: Math.random() * 0.4 + 0.05,
-            alpha: Math.random() * 0.8 + 0.2
-        });
-    }
-}
+document.addEventListener('mousemove', (event) => {
+    mouseX = (event.clientX - windowHalfX);
+    mouseY = (event.clientY - windowHalfY);
+});
 
-function drawStars() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
-    stars.forEach(star => {
-        const offsetX = (mouseX / window.innerWidth - 0.5) * star.radius * 4;
-        const offsetY = (mouseY / window.innerHeight - 0.5) * star.radius * 4;
-        ctx.globalAlpha = star.alpha;
-        ctx.beginPath();
-        ctx.arc(star.x + offsetX, star.y + offsetY, star.radius, 0, Math.PI * 2);
-        ctx.fill();
-        star.alpha += (Math.random() - 0.5) * 0.01;
-        star.alpha = Math.min(Math.max(star.alpha, 0.2), 0.9);
-    });
-    ctx.globalAlpha = 1;
-}
+// Scroll interaction
+let scrollY = 0;
+window.addEventListener('scroll', () => {
+    scrollY = window.scrollY;
+});
+
+// --- Animation Loop ---
+const clock = new THREE.Clock();
 
 function animate() {
-    drawStars();
-    requestAnimationFrame(animate);
+    const elapsedTime = clock.getElapsedTime();
+
+    targetX = mouseX * 0.001;
+    targetY = mouseY * 0.001;
+
+    // Smooth rotation
+    particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
+    particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
+
+    // Constant slow rotation
+    particlesMesh.rotation.y += 0.0005;
+    starsMesh.rotation.y -= 0.0002;
+
+    // Gentle floating
+    particlesMesh.position.y = -scrollY * 0.0005;
+    starsMesh.position.y = -scrollY * 0.0002;
+
+    // Mouse parallax for camera
+    camera.position.x += (mouseX * 0.0005 - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY * 0.0005 - camera.position.y) * 0.05;
+    camera.lookAt(scene.position);
+
+    renderer.render(scene, camera);
+    window.requestAnimationFrame(animate);
 }
 
-window.addEventListener('resize', () => {
-    resizeCanvas();
-    createStars();
-});
-
-window.addEventListener('pointermove', (event) => {
-    mouseX = event.clientX;
-    mouseY = event.clientY;
-});
-
-resizeCanvas();
-createStars();
 animate();
 
-// 章节目录折叠
+// --- Resize Handling ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+
+// --- UI Logic (Sidebar & I18n) ---
+// Chapter Directory Toggle
 const chapterToggles = document.querySelectorAll('.chapter-toggle');
 chapterToggles.forEach(button => {
     button.addEventListener('click', () => {
@@ -70,5 +134,25 @@ chapterToggles.forEach(button => {
         if (!list) return;
         const isCollapsed = list.classList.toggle('collapsed');
         button.setAttribute('aria-expanded', (!isCollapsed).toString());
+    });
+});
+
+// Scroll to anchor smooth (polyfill if needed, or JS enhancement)
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return;
+        const target = document.querySelector(targetId);
+        if (target) {
+            const headerOffset = 100;
+            const elementPosition = target.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: "smooth"
+            });
+        }
     });
 });

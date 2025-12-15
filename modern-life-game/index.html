@@ -2692,6 +2692,7 @@
                 toastMessage: '',
                 showExitConfirm: false, // 退出确认弹窗
                 showMonthTransition: false, // 月份过渡动画
+                _runPrompted: false, // 本局结束后是否已弹出“保存战绩”
             });
 
             // 计算属性
@@ -2857,6 +2858,42 @@
                 goToDifficultySelect();
             };
             
+            // 仓库容量：统一以 STORAGE_UPGRADES 为准（避免难度配置里的旧 maxStorage 造成错位）
+            const storageInfoForLevel = (level) => {
+                const safeLevel = Math.max(1, Math.min(Number(level) || 1, STORAGE_UPGRADES.value.length));
+                return STORAGE_UPGRADES.value.find(u => u.level === safeLevel) || STORAGE_UPGRADES.value[0];
+            };
+            
+            const storageCapacityForLevel = (level) => storageInfoForLevel(level)?.capacity || 100;
+            
+            // 兼容/修复存档：确保存档里的 storageLevel 与 maxStorage 不再错位
+            const normalizeStorageState = () => {
+                const maxLevel = STORAGE_UPGRADES.value.length || 1;
+                let level = Math.max(1, Math.min(Number(gameState.storageLevel) || 1, maxLevel));
+                
+                // 计算当前库存占用空间（不依赖 usedStorage computed，避免循环）
+                let used = 0;
+                try {
+                    Object.entries(gameState.inventory || {}).forEach(([id, data]) => {
+                        const qty = data?.qty || 0;
+                        const space = ITEMS.value?.[id]?.space || 0;
+                        used += qty * space;
+                    });
+                } catch (_) {}
+                
+                // 先把 maxStorage 对齐到该等级的 capacity
+                let cap = storageCapacityForLevel(level);
+                
+                // 如果存档里库存已经超出该等级容量，自动提升等级直到装得下（不丢数据）
+                while (level < maxLevel && used > cap) {
+                    level += 1;
+                    cap = storageCapacityForLevel(level);
+                }
+                
+                gameState.storageLevel = level;
+                gameState.maxStorage = cap;
+            };
+            
             // 选择起始城市并开始游戏
             const selectStartCity = (cityId) => {
                 const diffConfig = DIFFICULTY.value[gameState.difficulty];
@@ -2866,7 +2903,7 @@
                 const salary = diffConfig.getSalary(cityId);
                 const ownsHouse = diffConfig.ownsHouse;
                 const storageLevel = diffConfig.storageLevel;
-                const maxStorage = diffConfig.maxStorage;
+                const maxStorage = storageCapacityForLevel(storageLevel);
                 const livingCost = diffConfig.getLivingCost(cityId);
                 
                 // 计算房贷（只有简单模式有房子才有房贷）
@@ -2911,7 +2948,11 @@
                     lastRentIncreaseYear: 0,
                 });
                 uiState.newsHistory = [];
+                uiState._runPrompted = false;
                 initPrices();
+                
+                // 统一修正仓库状态（兼容旧存档/旧难度配置）
+                normalizeStorageState();
                 
                 // 显示开始提示
                 const currency = t('currency');
@@ -3303,6 +3344,7 @@
                         ? 'Deine Gesundheit ist am Ende...' 
                         : '健康值归零，你累倒了...';
                     gameState.screen = 'gameover';
+                    scheduleRunSavePrompt();
                     return;
                 }
                 
@@ -3314,6 +3356,7 @@
                             ? 'Du kannst die Miete nicht mehr zahlen. Zurück aufs Dorf...'
                             : '连续付不起房租，被房东赶出去了...只能回老家了';
                         gameState.screen = 'gameover';
+                        scheduleRunSavePrompt();
                         return;
                     }
                 }
@@ -3323,6 +3366,7 @@
                         ? 'Du bist pleite und obdachlos...'
                         : '你破产了，无家可归...';
                     gameState.screen = 'gameover';
+                    scheduleRunSavePrompt();
                     return;
                 }
                 
@@ -3367,6 +3411,7 @@
                         gameState.gameOverReason = `${currentLang.value === 'de' ? '6 Jahre vorbei' : '6年结束了'}。${failReason}`;
                         gameState.screen = 'gameover';
                     }
+                    scheduleRunSavePrompt();
                 }
             };
             
@@ -3412,7 +3457,8 @@
                 gameState.ownsHouse = true;
                 gameState.homeCity = cityId;
                 gameState.warehouseCity = cityId;
-                gameState.maxStorage = Math.max(gameState.maxStorage, 100); // 买房后仓库升级
+                // 买房后：确保存档/显示一致（至少对齐到当前仓库等级的容量）
+                normalizeStorageState();
                 
                 showToast(currentLang.value === 'de'
                     ? `🏠 Haus in ${CITIES.value[cityId].name} gekauft! Hypothek: €${cappedMortgage.toLocaleString()}`
@@ -3618,23 +3664,27 @@
             };
             
             // 截屏保存功能
+            const captureEndScreenCanvas = async (scale = 2) => {
+                // 获取游戏结束/胜利画面的容器
+                const targetEl = document.querySelector('#app > div');
+                if (!targetEl) return null;
+                
+                return await html2canvas(targetEl, {
+                    backgroundColor: '#0a0a1a',
+                    scale: scale, // 高清截图
+                    useCORS: true,
+                    logging: false
+                });
+            };
+            
             const saveScreenshot = async () => {
                 try {
                     showToast('📸 正在生成截图...');
-                    
-                    // 获取游戏结束/胜利画面的容器
-                    const targetEl = document.querySelector('#app > div');
-                    if (!targetEl) {
+                    const canvas = await captureEndScreenCanvas(2);
+                    if (!canvas) {
                         showToast('❌ 截图失败');
                         return;
                     }
-                    
-                    const canvas = await html2canvas(targetEl, {
-                        backgroundColor: '#0a0a1a',
-                        scale: 2, // 高清截图
-                        useCORS: true,
-                        logging: false
-                    });
                     
                     // 转换为图片并下载
                     const link = document.createElement('a');
@@ -3649,6 +3699,251 @@
                 } catch (err) {
                     console.error('Screenshot error:', err);
                     showToast('❌ 截图失败，请尝试手动截图');
+                }
+            };
+
+            // ==================== 战绩系统（本地排行榜/导入导出） ====================
+            const RUNS_KEY = 'modern_life_game_runs_v1';
+            const SETTINGS_KEY = 'modern_life_game_settings_v1';
+            
+            const runsState = reactive({
+                runs: [],
+                // 通过“导入”合并进来的他人战绩（也存在 runs 里，只是标记来源）
+                sortBy: 'score', // score | netWorth | money | date
+            });
+            
+            const settings = reactive({
+                playerName: '',
+            });
+            
+            const loadSettings = () => {
+                try {
+                    const raw = localStorage.getItem(SETTINGS_KEY);
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    if (typeof data?.playerName === 'string') settings.playerName = data.playerName.slice(0, 24);
+                } catch (_) {}
+            };
+            
+            const saveSettings = () => {
+                try {
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                        playerName: settings.playerName || ''
+                    }));
+                } catch (_) {}
+            };
+            
+            const loadRuns = () => {
+                try {
+                    const raw = localStorage.getItem(RUNS_KEY);
+                    if (!raw) { runsState.runs = []; return; }
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) runsState.runs = arr;
+                } catch (e) {
+                    console.warn('Load runs failed:', e);
+                    runsState.runs = [];
+                }
+            };
+            
+            const persistRuns = () => {
+                try {
+                    // 限制数量，避免 localStorage 爆掉
+                    const trimmed = (runsState.runs || []).slice(0, 60);
+                    localStorage.setItem(RUNS_KEY, JSON.stringify(trimmed));
+                } catch (e) {
+                    console.warn('Persist runs failed:', e);
+                }
+            };
+            
+            const difficultyWeight = (diffId) => {
+                if (diffId === 'hard') return 1.2;
+                if (diffId === 'easy') return 0.85;
+                return 1.0;
+            };
+            
+            const calcRunScore = (run) => {
+                const nw = Number(run?.netWorth) || 0;
+                const w = difficultyWeight(run?.difficulty);
+                return Math.round(nw * w);
+            };
+            
+            const sortedRuns = computed(() => {
+                const list = Array.isArray(runsState.runs) ? runsState.runs.slice() : [];
+                const by = runsState.sortBy;
+                if (by === 'netWorth') {
+                    list.sort((a,b) => (Number(b.netWorth)||0) - (Number(a.netWorth)||0));
+                } else if (by === 'money') {
+                    list.sort((a,b) => (Number(b.money)||0) - (Number(a.money)||0));
+                } else if (by === 'date') {
+                    list.sort((a,b) => (Number(b.endedAt)||0) - (Number(a.endedAt)||0));
+                } else {
+                    list.sort((a,b) => calcRunScore(b) - calcRunScore(a));
+                }
+                return list;
+            });
+            
+            const uiRun = reactive({
+                generatingThumb: false,
+                name: '',
+                player: '',
+                thumbDataUrl: '',
+                importText: '',
+            });
+            
+            const defaultRunName = () => {
+                const ts = new Date().toISOString().slice(0, 16).replace('T', ' ');
+                const diffName = gameState.difficulty === 'hard' ? '困难' : gameState.difficulty === 'normal' ? '普通' : '简单';
+                const resultName = gameState.screen === 'win' ? '胜利' : '结束';
+                return `${ts}｜${diffName}｜${resultName}`;
+            };
+            
+            const generateRunThumb = async () => {
+                try {
+                    uiRun.generatingThumb = true;
+                    const canvas = await captureEndScreenCanvas(2);
+                    if (!canvas) return '';
+                    
+                    // 生成更小的 JPEG 缩略图（节省 localStorage）
+                    const maxW = 720;
+                    const scale = Math.min(1, maxW / canvas.width);
+                    const outW = Math.max(320, Math.floor(canvas.width * scale));
+                    const outH = Math.max(240, Math.floor(canvas.height * scale));
+                    const out = document.createElement('canvas');
+                    out.width = outW;
+                    out.height = outH;
+                    const ctx = out.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(canvas, 0, 0, outW, outH);
+                    const jpeg = out.toDataURL('image/jpeg', 0.78);
+                    uiRun.thumbDataUrl = jpeg;
+                    return jpeg;
+                } catch (e) {
+                    console.warn('generateRunThumb failed:', e);
+                    return '';
+                } finally {
+                    uiRun.generatingThumb = false;
+                }
+            };
+            
+            const openSaveRun = async () => {
+                uiState.modalType = 'runSave';
+                uiState.showModal = true;
+                uiRun.name = defaultRunName();
+                uiRun.player = (settings.playerName || '').trim();
+                uiRun.thumbDataUrl = '';
+                // 尽量自动生成，减少你点一步
+                await generateRunThumb();
+            };
+
+            const scheduleRunSavePrompt = () => {
+                if (uiState._runPrompted) return;
+                uiState._runPrompted = true;
+                setTimeout(() => {
+                    if (gameState.screen === 'gameover' || gameState.screen === 'win') {
+                        openSaveRun();
+                    }
+                }, 450);
+            };
+            
+            const saveRunRecord = async () => {
+                try {
+                    const name = (uiRun.name || '').trim().slice(0, 40) || defaultRunName();
+                    const player = (uiRun.player || '').trim().slice(0, 24);
+                    settings.playerName = player;
+                    saveSettings();
+                    
+                    if (!uiRun.thumbDataUrl) {
+                        await generateRunThumb();
+                    }
+                    
+                    const endedAt = Date.now();
+                    const run = {
+                        id: `run_${endedAt}_${Math.random().toString(16).slice(2, 8)}`,
+                        name,
+                        player,
+                        source: 'local', // local | import
+                        endedAt,
+                        // 核心结果
+                        result: gameState.screen === 'win' ? 'win' : 'gameover',
+                        difficulty: gameState.difficulty,
+                        year: gameState.year,
+                        month: gameState.month,
+                        netWorth: netWorth.value,
+                        money: gameState.money,
+                        health: gameState.health,
+                        mood: gameState.mood,
+                        ownsHouse: gameState.ownsHouse,
+                        mortgageRemaining: gameState.mortgageRemaining,
+                        houseEquity: houseEquity.value,
+                        storageLevel: gameState.storageLevel,
+                        maxStorage: gameState.maxStorage,
+                        thumb: uiRun.thumbDataUrl || '',
+                    };
+                    
+                    runsState.runs = [run, ...(runsState.runs || [])];
+                    persistRuns();
+                    closeModal();
+                    showToast('🏆 战绩已保存！');
+                } catch (e) {
+                    console.error('saveRunRecord error:', e);
+                    showToast('❌ 保存战绩失败');
+                }
+            };
+            
+            const deleteRun = (id) => {
+                runsState.runs = (runsState.runs || []).filter(r => r?.id !== id);
+                persistRuns();
+            };
+            
+            const exportRuns = () => {
+                try {
+                    const payload = {
+                        version: 1,
+                        exportedAt: new Date().toISOString(),
+                        runs: runsState.runs || [],
+                    };
+                    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `浮生记_战绩导出_${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('✅ 已导出战绩文件');
+                } catch (e) {
+                    console.error('exportRuns error:', e);
+                    showToast('❌ 导出失败');
+                }
+            };
+            
+            const importRunsFromText = () => {
+                try {
+                    const text = (uiRun.importText || '').trim();
+                    if (!text) return;
+                    const data = JSON.parse(text);
+                    const imported = Array.isArray(data) ? data : (data?.runs || []);
+                    if (!Array.isArray(imported)) throw new Error('Invalid format');
+                    
+                    const existingIds = new Set((runsState.runs || []).map(r => r?.id).filter(Boolean));
+                    const merged = [];
+                    imported.forEach(r => {
+                        if (!r) return;
+                        const id = r.id || `imp_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+                        if (existingIds.has(id)) return;
+                        merged.push({
+                            ...r,
+                            id,
+                            source: r.source || 'import',
+                        });
+                    });
+                    runsState.runs = [...merged, ...(runsState.runs || [])];
+                    persistRuns();
+                    uiRun.importText = '';
+                    showToast(`✅ 导入成功：${merged.length} 条`);
+                } catch (e) {
+                    console.error('importRunsFromText error:', e);
+                    showToast('❌ 导入格式有误（需要JSON）');
                 }
             };
 
@@ -3704,6 +3999,8 @@
                     if (saveData.newsHistory) {
                         uiState.newsHistory = saveData.newsHistory;
                     }
+                    // 修复旧存档里仓库容量错位的问题
+                    normalizeStorageState();
                     showToast(t('gameLoaded'));
                     return true;
                 } catch (e) {
@@ -3743,6 +4040,10 @@
                 uiState.showExitConfirm = false;
                 gameState.screen = 'start';
             };
+            
+            // 初始化：加载战绩与设置（不依赖生命周期也能工作）
+            loadSettings();
+            loadRuns();
 
             return {
                 gameState,
@@ -3809,6 +4110,17 @@
                 exitWithSave,
                 exitWithoutSave,
                 saveScreenshot,
+                // 仓库修复/预览
+                storageCapacityForLevel,
+                // 战绩系统
+                runsState,
+                sortedRuns,
+                uiRun,
+                openSaveRun,
+                saveRunRecord,
+                deleteRun,
+                exportRuns,
+                importRunsFromText,
             };
         },
 
@@ -3905,6 +4217,14 @@
                     >
                         🎮 {{ hasSaveGame ? t('newGame') : t('selectDifficulty') }}
                     </button>
+
+                    <!-- 战绩排行榜入口 -->
+                    <button
+                        @click="openModal('leaderboard')"
+                        class="w-full max-w-xs py-3 rounded-lg font-bold bg-cyber-card border border-cyber-purple/40 text-cyber-purple touch-feedback mt-3"
+                    >
+                        🏆 战绩排行
+                    </button>
                     
                     <p class="text-gray-500 text-xs mt-6 mb-8 text-center">
                         {{ t('startTip') }}
@@ -3963,7 +4283,7 @@
                                 </div>
                                 <div class="bg-cyber-darker rounded p-2">
                                     <span class="text-gray-500">📦 {{ t('storageLabel') }}:</span>
-                                    <span class="text-red-300 ml-1">20{{ t('slots') }}</span>
+                                    <span class="text-red-300 ml-1">{{ storageCapacityForLevel(DIFFICULTY.hard.storageLevel) }}{{ t('slots') }}</span>
                                 </div>
                             </div>
                             <p class="text-xs text-gray-500 mt-3 text-center">{{ DIFFICULTY.hard.tips }}</p>
@@ -3997,7 +4317,7 @@
                                 </div>
                                 <div class="bg-cyber-darker rounded p-2">
                                     <span class="text-gray-500">📦 {{ t('storageLabel') }}:</span>
-                                    <span class="text-yellow-300 ml-1">50{{ t('slots') }}</span>
+                                    <span class="text-yellow-300 ml-1">{{ storageCapacityForLevel(DIFFICULTY.normal.storageLevel) }}{{ t('slots') }}</span>
                                 </div>
                             </div>
                             <p class="text-xs text-gray-500 mt-3 text-center">{{ DIFFICULTY.normal.tips }}</p>
@@ -4031,7 +4351,7 @@
                                 </div>
                                 <div class="bg-cyber-darker rounded p-2">
                                     <span class="text-gray-500">📦 {{ t('storageLabel') }}:</span>
-                                    <span class="text-green-300 ml-1">100{{ t('slots') }}</span>
+                                    <span class="text-green-300 ml-1">{{ storageCapacityForLevel(DIFFICULTY.easy.storageLevel) }}{{ t('slots') }}</span>
                                 </div>
                             </div>
                             <p class="text-xs text-gray-500 mt-3 text-center">{{ DIFFICULTY.easy.tips }}</p>
@@ -4987,6 +5307,100 @@
                                 </button>
                             </div>
                         </template>
+                        
+                        <!-- 战绩排行模态 -->
+                        <template v-else-if="uiState.modalType === 'leaderboard'">
+                            <h3 class="text-lg font-bold mb-4 text-center">🏆 战绩排行</h3>
+                            
+                            <div class="flex gap-2 mb-3">
+                                <button @click="runsState.sortBy = 'score'" :class="runsState.sortBy==='score' ? 'bg-cyber-purple text-white' : 'bg-cyber-darker text-gray-300'"
+                                        class="flex-1 py-2 rounded-lg text-sm font-bold touch-feedback">综合</button>
+                                <button @click="runsState.sortBy = 'netWorth'" :class="runsState.sortBy==='netWorth' ? 'bg-cyber-purple text-white' : 'bg-cyber-darker text-gray-300'"
+                                        class="flex-1 py-2 rounded-lg text-sm font-bold touch-feedback">净资产</button>
+                                <button @click="runsState.sortBy = 'date'" :class="runsState.sortBy==='date' ? 'bg-cyber-purple text-white' : 'bg-cyber-darker text-gray-300'"
+                                        class="flex-1 py-2 rounded-lg text-sm font-bold touch-feedback">最新</button>
+                            </div>
+                            
+                            <div class="bg-cyber-darker rounded-lg p-3 mb-3 text-xs text-gray-300">
+                                <p class="text-gray-400 mb-2">把你的战绩导出成 JSON 给别人，对方导入后就能看到“总排名”（无需服务器）。</p>
+                                <div class="flex gap-2">
+                                    <button @click="exportRuns" class="flex-1 py-2 rounded-lg bg-cyber-card border border-cyber-cyan/40 text-cyber-cyan font-bold touch-feedback">导出</button>
+                                    <button @click="importRunsFromText" class="flex-1 py-2 rounded-lg bg-cyber-card border border-cyber-pink/40 text-cyber-pink font-bold touch-feedback">导入</button>
+                                </div>
+                                <textarea v-model="uiRun.importText" rows="3" class="w-full mt-2 p-2 rounded bg-black/40 border border-gray-600 text-gray-200 text-xs"
+                                          placeholder="在这里粘贴别人发给你的战绩JSON（或你自己的导出文件内容）"></textarea>
+                            </div>
+                            
+                            <div class="max-h-72 overflow-y-auto space-y-2 mb-4">
+                                <div v-if="sortedRuns.length === 0" class="text-center text-gray-400 py-6">
+                                    暂无战绩。去打几局再来！
+                                </div>
+                                <div v-for="(r, idx) in sortedRuns" :key="r.id" class="bg-cyber-card/60 rounded-lg p-3 border border-gray-600/30">
+                                    <div class="flex gap-3">
+                                        <div class="w-16 h-12 rounded bg-black/40 overflow-hidden border border-gray-700 flex items-center justify-center">
+                                            <img v-if="r.thumb" :src="r.thumb" class="w-full h-full object-cover" />
+                                            <span v-else class="text-gray-600 text-xs">无图</span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <p class="font-bold text-sm truncate">
+                                                    #{{ idx + 1 }} {{ r.name || '未命名' }}
+                                                </p>
+                                                <button @click="deleteRun(r.id)" class="px-2 py-1 rounded bg-red-900/30 border border-red-500/30 text-red-300 text-xs touch-feedback">删除</button>
+                                            </div>
+                                            <p class="text-xs text-gray-400 truncate">
+                                                {{ r.player ? ('👤 ' + r.player + ' · ') : '' }}
+                                                {{ r.difficulty === 'hard' ? '🔴 困难' : r.difficulty === 'easy' ? '🟢 简单' : '🟡 普通' }}
+                                                · {{ r.result === 'win' ? '🎉 胜利' : '💀 结束' }}
+                                            </p>
+                                            <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+                                                <div class="bg-cyber-darker rounded p-2 flex justify-between">
+                                                    <span class="text-gray-500">净资产</span>
+                                                    <span class="text-gray-200 font-bold">{{ t('currency') }}{{ Number(r.netWorth||0).toLocaleString() }}</span>
+                                                </div>
+                                                <div class="bg-cyber-darker rounded p-2 flex justify-between">
+                                                    <span class="text-gray-500">现金</span>
+                                                    <span class="text-gray-200 font-bold">{{ t('currency') }}{{ Number(r.money||0).toLocaleString() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-3">
+                                <button @click="closeModal" class="flex-1 py-3 rounded-lg bg-gray-700 font-bold touch-feedback">关闭</button>
+                            </div>
+                        </template>
+                        
+                        <!-- 保存战绩模态 -->
+                        <template v-else-if="uiState.modalType === 'runSave'">
+                            <h3 class="text-lg font-bold mb-4 text-center">🏆 保存本局战绩</h3>
+                            
+                            <div class="bg-cyber-darker rounded-lg p-4 mb-4">
+                                <label class="block text-xs text-gray-400 mb-2">本次战绩名称</label>
+                                <input v-model="uiRun.name" class="w-full px-3 py-2 rounded bg-black/40 border border-gray-600 text-gray-200" placeholder="比如：鹤岗躺平逆袭 / 北京996爆炸..." />
+                                
+                                <label class="block text-xs text-gray-400 mt-4 mb-2">玩家名（可选）</label>
+                                <input v-model="uiRun.player" class="w-full px-3 py-2 rounded bg-black/40 border border-gray-600 text-gray-200" placeholder="比如：usernametooshort" />
+                                
+                                <div class="mt-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-gray-400">缩略图（用于排行榜）</span>
+                                        <span v-if="uiRun.generatingThumb" class="text-xs text-gray-500">生成中…</span>
+                                    </div>
+                                    <div class="w-full h-32 rounded bg-black/40 border border-gray-700 overflow-hidden flex items-center justify-center">
+                                        <img v-if="uiRun.thumbDataUrl" :src="uiRun.thumbDataUrl" class="w-full h-full object-cover" />
+                                        <span v-else class="text-gray-600 text-xs">未生成</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-3">
+                                <button @click="closeModal" class="flex-1 py-3 rounded-lg bg-gray-700 font-bold touch-feedback">取消</button>
+                                <button @click="saveRunRecord" class="flex-1 py-3 rounded-lg bg-cyber-purple font-bold touch-feedback">保存</button>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
@@ -5022,7 +5436,13 @@
                             @click="saveScreenshot"
                             class="w-full py-3 rounded-lg font-bold text-lg bg-cyber-card border border-cyber-cyan text-cyber-cyan touch-feedback"
                         >
-                            📸 保存记录
+                            📸 保存截图
+                        </button>
+                        <button 
+                            @click="openSaveRun"
+                            class="w-full py-3 rounded-lg font-bold text-lg bg-cyber-card border border-cyber-purple text-cyber-purple touch-feedback"
+                        >
+                            🏆 保存战绩
                         </button>
                         <button 
                             @click="goToCitySelect"
@@ -5061,7 +5481,13 @@
                             @click="saveScreenshot"
                             class="w-full py-3 rounded-lg font-bold text-lg bg-cyber-card border border-cyber-yellow text-cyber-yellow touch-feedback"
                         >
-                            📸 保存记录
+                            📸 保存截图
+                        </button>
+                        <button 
+                            @click="openSaveRun"
+                            class="w-full py-3 rounded-lg font-bold text-lg bg-cyber-card border border-cyber-purple text-cyber-purple touch-feedback"
+                        >
+                            🏆 保存战绩
                         </button>
                         <button 
                             @click="goToCitySelect"
