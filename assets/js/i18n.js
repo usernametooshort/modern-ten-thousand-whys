@@ -349,7 +349,7 @@ const translations = {
         locu_prefix: "位置: ",
     },
     en: {
-        app_title: "10,000 Whys · Immersive Science Encyclopedia",
+        app_title: "100,000 Whys · Immersive Science Encyclopedia",
         eyebrow: "Modern Ten Thousand Whys",
         tagline: "Cinematic visualizations explaining Astronomy, Geography, and Physics concepts.",
         nav_overview: "Overview",
@@ -530,7 +530,7 @@ const translations = {
         hero_cta_start: "Start Exploring",
         back_to_top: "Top",
         back_to_home: "← Back to Directory",
-        footer_text: "© 2025 10,000 Whys 3D · Static Deployment",
+        footer_text: "© 2025 100,000 Whys 3D · Static Deployment",
 
         ch2_mini_tag: "Chapter 2 · Geography",
         ch2_title: "Earth Systems & Biosphere",
@@ -695,7 +695,7 @@ const translations = {
         locu_prefix: "Loc: ",
     },
     de: {
-        app_title: "10.000 Warums · Immersives Wissenschaftslexikon",
+        app_title: "100.000 Warums · Immersives Wissenschaftslexikon",
         eyebrow: "Modern Ten Thousand Whys",
         tagline: "Filmreife Visualisierungen für Astronomie, Geographie und Physik.",
         nav_overview: "Übersicht",
@@ -876,7 +876,7 @@ const translations = {
         hero_cta_start: "Entdecken",
         back_to_top: "Nach oben",
         back_to_home: "← Zurück zum Verzeichnis",
-        footer_text: "© 2025 10.000 Warums 3D · Statische Version",
+        footer_text: "© 2025 100.000 Warums 3D · Statische Version",
 
         ch2_mini_tag: "Kapitel 2 · Geographie",
         ch2_title: "Erdsysteme & Biosphäre",
