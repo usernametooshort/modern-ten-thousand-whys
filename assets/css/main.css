@@ -721,10 +721,16 @@ footer {
         /* Fallback */
         min-height: 100dvh;
         padding-top: 60px;
+        flex-direction: column;
+        /* Stacking for relative positions */
+        height: auto;
+        /* Allow growth if content is larger than viewport */
+        padding-bottom: 20px;
     }
 
     .hero-content {
         padding: 0 20px;
+        flex: 0 0 auto;
     }
 
     .hero-cta-group {
