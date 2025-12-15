@@ -491,6 +491,194 @@ const PLANET_DATA = [
     }
 ];
 
+// --- Shaders for 100% Realism Overhaul ---
+
+// Reusing EarthVertexShader logic for all planets as it provides standard view/normal data
+const PlanetVertexShader = EarthVertexShader;
+
+const GasPlanetFragmentShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+uniform float time;
+uniform vec3 baseColor;
+uniform vec3 bandColor1;
+uniform vec3 bandColor2;
+uniform float scale;
+uniform float distortion;
+
+// Simplex Noise (same as Earth)
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v) {
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute( permute( permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  float n_ = 0.142857142857;
+  vec3  ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+}
+
+void main() {
+    // 3D Noise for gas bands
+    vec3 seed = vNormal * scale; 
+    
+    // Animate turbulence
+    float turbulence = snoise(seed + vec3(time * 0.1, 0.0, 0.0)) * distortion;
+    
+    // Banding mostly depends on Y (latitude), distorted by noise
+    float band = (vNormal.y + turbulence * 0.5) * 5.0; // 5.0 = frequency of bands
+    float noiseVal = snoise(seed * 2.0);
+    
+    vec3 color = mix(baseColor, bandColor1, sin(band) * 0.5 + 0.5);
+    color = mix(color, bandColor2, noiseVal * 0.3); // Add some chaotic storms
+    
+    // Lighting
+    vec3 viewDir = normalize(vViewPosition);
+    vec3 normal = normalize(vNormal);
+    vec3 lightDir = normalize(vec3(50.0, 20.0, 50.0)); // Fixed light for now
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    // Rim Light (Atmosphere)
+    float rim = 1.0 - max(dot(viewDir, normal), 0.0);
+    rim = pow(rim, 2.5);
+    vec3 atmosphere = bandColor1 * rim * 0.4;
+    
+    gl_FragColor = vec4(color * (diff + 0.2) + atmosphere, 1.0);
+}
+`;
+
+const RockyPlanetFragmentShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+uniform vec3 baseColor;
+uniform float scale;
+uniform float hasWater; // 0 or 1
+uniform float hasIceCaps; // 0 or 1
+
+// Simplex Noise (same as Earth)
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v) {
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute( permute( permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  float n_ = 0.142857142857;
+  vec3  ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+}
+
+void main() {
+    float n = snoise(vNormal * scale);
+    float n2 = snoise(vNormal * scale * 4.0);
+    
+    // Crater-like details (Ridged noise)
+    float crater = abs(n2); 
+    
+    vec3 color = baseColor * (0.8 + n * 0.2 + crater * 0.1);
+    
+    // Ice Caps for Mars-like planets
+    if (hasIceCaps > 0.5) {
+        float cap = abs(vNormal.y);
+        if (cap > 0.85) {
+            float noiseCap = snoise(vNormal * 10.0);
+            if (cap + noiseCap * 0.05 > 0.88) {
+                color = vec3(1.0); // White ice
+            }
+        }
+    }
+
+    // Lighting
+    vec3 viewDir = normalize(vViewPosition);
+    vec3 normal = normalize(vNormal);
+    vec3 lightDir = normalize(vec3(50.0, 20.0, 50.0)); 
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    gl_FragColor = vec4(color * (diff + 0.1), 1.0);
+}
+`;
+
 // --- Minimal Simplex Noise Lib (Inlined for Procedural Textures) ---
 class SimplexNoise {
     constructor() {
@@ -1018,136 +1206,178 @@ void main() {
                         time: this.uniforms.time
                     }
                 });
-            } else {
-                const textureData = this.generatePlanetTexture(data);
-                material = new THREE.MeshStandardMaterial({
-                    map: textureData.map,
-                    bumpMap: textureData.bump,
-                    bumpScale: data.type === 'gas' ? 0 : 0.05,
-                    roughness: data.type === 'gas' ? 1.0 : 0.7,
-                    metalness: 0.1
-                });
-            }
+                let material;
 
-            const planet = new THREE.Mesh(planetGeo, material);
-            planet.position.x = data.distance;
-            planet.castShadow = true;
-            planet.receiveShadow = true;
-            group.add(planet);
-
-            // Add Atmosphere for Earth (Enhanced)
-            if (data.type === 'earth') {
-                const atmoGeo = new THREE.SphereGeometry(data.size * 1.25, 64, 64);
-                const atmoMat = new THREE.ShaderMaterial({
-                    uniforms: {
-                        color: { value: new THREE.Color(0x3366ff) },
-                        intensity: { value: 0.5 },
-                        power: { value: 4.0 }
-                    },
-                    vertexShader: AtmosphereVertexShader,
-                    fragmentShader: AtmosphereFragmentShader,
-                    transparent: true,
-                    side: THREE.BackSide,
-                    blending: THREE.AdditiveBlending,
-                    depthWrite: false
-                });
-                const atmo = new THREE.Mesh(atmoGeo, atmoMat);
-                planet.add(atmo);
-            } else if (data.atmosphereGlow) { // Existing atmosphere logic for other planets
-                const atmoGeo = new THREE.SphereGeometry(data.size * 1.15, 64, 64);
-                const atmoMat = new THREE.ShaderMaterial({
-                    uniforms: {
-                        color: { value: new THREE.Color(data.atmosphereColor) },
-                        intensity: { value: 0.5 },
-                        power: { value: 4.0 }
-                    },
-                    vertexShader: AtmosphereVertexShader,
-                    fragmentShader: AtmosphereFragmentShader,
-                    transparent: true,
-                    side: THREE.BackSide,
-                    blending: THREE.AdditiveBlending,
-                    depthWrite: false
-                });
-                const atmo = new THREE.Mesh(atmoGeo, atmoMat);
-                planet.add(atmo);
-            }
-
-
-
-            // Cloud Layer for Earth
-            if (data.type === 'earth') {
-                const cloudGeo = new THREE.SphereGeometry(data.size * 1.03, 64, 64);
-                const cloudCanvas = document.createElement('canvas');
-                cloudCanvas.width = 1024; cloudCanvas.height = 512;
-                const cCtx = cloudCanvas.getContext('2d');
-                // Transparent background
-
-                // Helper for cloud generation
-                const smoothstep = (min, max, value) => {
-                    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-                    return x * x * (3 - 2 * x);
-                };
-
-                // Advanced Cloud Noise
-                const imgData = cCtx.createImageData(1024, 512);
-                for (let i = 0; i < imgData.data.length; i += 4) {
-                    const x = (i / 4) % 1024;
-                    const y = Math.floor((i / 4) / 1024);
-                    // Mapping to sphere coords roughly
-                    const nx = (x / 1024) * Math.PI * 6; // More repeats
-                    const ny = (y / 512) * Math.PI * 4;
-
-                    let n = simplex.noise(Math.cos(nx), Math.sin(nx) * 2.0 + ny);
-                    n += 0.5 * simplex.noise(nx * 2, ny * 2 + 10);
-
-                    // Tweak threshold for wispy clouds
-                    const alpha = smoothstep(0.4, 0.8, n) * 200;
-
-                    imgData.data[i] = 255;
-                    imgData.data[i + 1] = 255;
-                    imgData.data[i + 2] = 255;
-                    imgData.data[i + 3] = alpha;
+                // --- PROCEDURAL SHADER SELECTION ---
+                if (data.type === 'earth') {
+                    material = new THREE.ShaderMaterial({
+                        vertexShader: EarthVertexShader,
+                        fragmentShader: EarthFragmentShader,
+                        uniforms: { time: this.uniforms.time }
+                    });
+                } else if (data.type === 'gas') {
+                    // Jupiter, Saturn, Uranus, Neptune
+                    material = new THREE.ShaderMaterial({
+                        vertexShader: PlanetVertexShader,
+                        fragmentShader: GasPlanetFragmentShader,
+                        uniforms: {
+                            time: this.uniforms.time,
+                            baseColor: { value: new THREE.Color(data.color) },
+                            bandColor1: { value: new THREE.Color(data.bandColor1 || data.color) },
+                            bandColor2: { value: new THREE.Color(data.bandColor2 || 0x000000) },
+                            scale: { value: data.noiseScale || 3.0 },
+                            distortion: { value: 0.5 }
+                        }
+                    });
+                } else if (data.nameKey === 'solar_planet_venus') {
+                    // Venus is special: Rocky but looks like Gas (Thick Atmosphere)
+                    material = new THREE.ShaderMaterial({
+                        vertexShader: PlanetVertexShader,
+                        fragmentShader: GasPlanetFragmentShader,
+                        uniforms: {
+                            time: this.uniforms.time,
+                            baseColor: { value: new THREE.Color(0xFFC649) }, // Yellowish
+                            bandColor1: { value: new THREE.Color(0xE6A13B) },
+                            bandColor2: { value: new THREE.Color(0xD9891E) },
+                            scale: { value: 5.0 }, // Dense clouds
+                            distortion: { value: 0.2 } // Flowing clouds
+                        }
+                    });
+                } else {
+                    // Rocky (Mercury, Mars)
+                    const isMars = data.nameKey === 'solar_planet_mars';
+                    material = new THREE.ShaderMaterial({
+                        vertexShader: PlanetVertexShader,
+                        fragmentShader: RockyPlanetFragmentShader,
+                        uniforms: {
+                            time: this.uniforms.time,
+                            baseColor: { value: new THREE.Color(data.color) },
+                            scale: { value: isMars ? 3.0 : 5.0 },
+                            hasWater: { value: 0.0 },
+                            hasIceCaps: { value: isMars ? 1.0 : 0.0 }
+                        }
+                    });
                 }
-                cCtx.putImageData(imgData, 0, 0);
 
-                const cloudTex = new THREE.CanvasTexture(cloudCanvas);
-                const cloudMat = new THREE.MeshStandardMaterial({
-                    map: cloudTex,
-                    transparent: true,
-                    opacity: 0.9,
-                    side: THREE.DoubleSide
+                const planet = new THREE.Mesh(planetGeo, material);
+                planet.position.x = data.distance;
+                planet.castShadow = true;
+                planet.receiveShadow = true;
+                group.add(planet);
+
+                // Add Atmosphere for Earth (Enhanced)
+                if (data.type === 'earth') {
+                    const atmoGeo = new THREE.SphereGeometry(data.size * 1.25, 64, 64);
+                    const atmoMat = new THREE.ShaderMaterial({
+                        uniforms: {
+                            color: { value: new THREE.Color(0x3366ff) },
+                            intensity: { value: 0.5 },
+                            power: { value: 4.0 }
+                        },
+                        vertexShader: AtmosphereVertexShader,
+                        fragmentShader: AtmosphereFragmentShader,
+                        transparent: true,
+                        side: THREE.BackSide,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false
+                    });
+                    const atmo = new THREE.Mesh(atmoGeo, atmoMat);
+                    planet.add(atmo);
+                } else if (data.atmosphereGlow) { // Existing atmosphere logic for other planets
+                    const atmoGeo = new THREE.SphereGeometry(data.size * 1.15, 64, 64);
+                    const atmoMat = new THREE.ShaderMaterial({
+                        uniforms: {
+                            color: { value: new THREE.Color(data.atmosphereColor) },
+                            intensity: { value: 0.5 },
+                            power: { value: 4.0 }
+                        },
+                        vertexShader: AtmosphereVertexShader,
+                        fragmentShader: AtmosphereFragmentShader,
+                        transparent: true,
+                        side: THREE.BackSide,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false
+                    });
+                    const atmo = new THREE.Mesh(atmoGeo, atmoMat);
+                    planet.add(atmo);
+                }
+
+
+
+                // Cloud Layer for Earth
+                if (data.type === 'earth') {
+                    const cloudGeo = new THREE.SphereGeometry(data.size * 1.03, 64, 64);
+                    const cloudCanvas = document.createElement('canvas');
+                    cloudCanvas.width = 1024; cloudCanvas.height = 512;
+                    const cCtx = cloudCanvas.getContext('2d');
+                    // Transparent background
+
+                    // Helper for cloud generation
+                    const smoothstep = (min, max, value) => {
+                        const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+                        return x * x * (3 - 2 * x);
+                    };
+
+                    // Advanced Cloud Noise
+                    const imgData = cCtx.createImageData(1024, 512);
+                    for (let i = 0; i < imgData.data.length; i += 4) {
+                        const x = (i / 4) % 1024;
+                        const y = Math.floor((i / 4) / 1024);
+                        // Mapping to sphere coords roughly
+                        const nx = (x / 1024) * Math.PI * 6; // More repeats
+                        const ny = (y / 512) * Math.PI * 4;
+
+                        let n = simplex.noise(Math.cos(nx), Math.sin(nx) * 2.0 + ny);
+                        n += 0.5 * simplex.noise(nx * 2, ny * 2 + 10);
+
+                        // Tweak threshold for wispy clouds
+                        const alpha = smoothstep(0.4, 0.8, n) * 200;
+
+                        imgData.data[i] = 255;
+                        imgData.data[i + 1] = 255;
+                        imgData.data[i + 2] = 255;
+                        imgData.data[i + 3] = alpha;
+                    }
+                    cCtx.putImageData(imgData, 0, 0);
+
+                    const cloudTex = new THREE.CanvasTexture(cloudCanvas);
+                    const cloudMat = new THREE.MeshStandardMaterial({
+                        map: cloudTex,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+                    const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+                    clouds.isClouds = true;
+                    planet.add(clouds);
+                }
+
+                if (data.rings) {
+                    const ringGeo = new THREE.RingGeometry(data.size * data.rings.inner, data.size * data.rings.outer, 128);
+                    const ringTex = this.generateRingTexture(data.rings.color);
+                    const ringMat = new THREE.MeshStandardMaterial({
+                        map: ringTex,
+                        color: 0xffffff,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: data.rings.opacity || 0.9
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.rotation.y = -Math.PI / 8;
+                    ring.receiveShadow = true;
+                    planet.add(ring);
+                }
+
+                this.planets.push({
+                    mesh: planet,
+                    distance: data.distance,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: data.speed,
+                    rotationSpeed: data.rotationSpeed,
+                    data: data
                 });
-                const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-                clouds.isClouds = true;
-                planet.add(clouds);
-            }
-
-            if (data.rings) {
-                const ringGeo = new THREE.RingGeometry(data.size * data.rings.inner, data.size * data.rings.outer, 128);
-                const ringTex = this.generateRingTexture(data.rings.color);
-                const ringMat = new THREE.MeshStandardMaterial({
-                    map: ringTex,
-                    color: 0xffffff,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: data.rings.opacity || 0.9
-                });
-                const ring = new THREE.Mesh(ringGeo, ringMat);
-                ring.rotation.x = Math.PI / 2;
-                ring.rotation.y = -Math.PI / 8;
-                ring.receiveShadow = true;
-                planet.add(ring);
-            }
-
-            this.planets.push({
-                mesh: planet,
-                distance: data.distance,
-                angle: Math.random() * Math.PI * 2,
-                speed: data.speed,
-                rotationSpeed: data.rotationSpeed,
-                data: data
             });
-        });
     }
 
     createAsteroidBelt() {
