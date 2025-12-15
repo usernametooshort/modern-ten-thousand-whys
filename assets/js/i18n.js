@@ -1,7 +1,7 @@
 const translations = {
     zh: {
         app_title: "十万个为什么 · 沉浸式科学图鉴",
-        eyebrow: "Modern Ten Thousand Whys",
+        eyebrow: "Modern Hundred Thousand Whys",
         tagline: "以天文、地理、物理为篇章，让每个问题都拥有电影级的可视化答案。",
         nav_overview: "章节总览",
         catalog_title: "章节目录",
@@ -350,7 +350,7 @@ const translations = {
     },
     en: {
         app_title: "100,000 Whys · Immersive Science Encyclopedia",
-        eyebrow: "Modern Ten Thousand Whys",
+        eyebrow: "Modern Hundred Thousand Whys",
         tagline: "Cinematic visualizations explaining Astronomy, Geography, and Physics concepts.",
         nav_overview: "Overview",
         catalog_title: "Contents",
@@ -696,7 +696,7 @@ const translations = {
     },
     de: {
         app_title: "100.000 Warums · Immersives Wissenschaftslexikon",
-        eyebrow: "Modern Ten Thousand Whys",
+        eyebrow: "Modern Hundred Thousand Whys",
         tagline: "Filmreife Visualisierungen für Astronomie, Geographie und Physik.",
         nav_overview: "Übersicht",
         catalog_title: "Inhalt",
