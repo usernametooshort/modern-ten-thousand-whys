@@ -1201,10 +1201,15 @@ void main() {
 
             // --- PROCEDURAL SHADER SELECTION ---
             if (data.type === 'earth') {
-                material = new THREE.ShaderMaterial({
-                    vertexShader: EarthVertexShader,
-                    fragmentShader: EarthFragmentShader,
-                    uniforms: { time: this.uniforms.time }
+                // NANO BANANA PRO: Use AI-generated photorealistic texture
+                const textureLoader = new THREE.TextureLoader();
+                const earthDayMap = textureLoader.load('./textures/earth_day.png');
+                earthDayMap.colorSpace = THREE.SRGBColorSpace;
+
+                material = new THREE.MeshStandardMaterial({
+                    map: earthDayMap,
+                    roughness: 0.6,
+                    metalness: 0.0
                 });
             } else if (data.type === 'gas') {
                 // Jupiter, Saturn, Uranus, Neptune
