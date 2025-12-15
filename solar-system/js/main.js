@@ -1338,6 +1338,27 @@ void main() {
                 const clouds = new THREE.Mesh(cloudGeo, cloudMat);
                 clouds.isClouds = true;
                 planet.add(clouds);
+
+                // MOON SATELLITE
+                const moonLoader = new THREE.TextureLoader();
+                const moonTex = moonLoader.load('./textures/moon.png');
+                moonTex.colorSpace = THREE.SRGBColorSpace;
+
+                const moonGeo = new THREE.SphereGeometry(data.size * 0.27, 32, 32); // Moon is ~27% Earth's size
+                const moonMat = new THREE.MeshStandardMaterial({
+                    map: moonTex,
+                    roughness: 0.9,
+                    metalness: 0.0
+                });
+                const moon = new THREE.Mesh(moonGeo, moonMat);
+                moon.position.x = data.size * 3; // Distance from Earth
+                moon.castShadow = true;
+                moon.receiveShadow = true;
+                moon.isMoon = true;
+                planet.add(moon);
+
+                // Store moon reference for animation
+                planet.moonMesh = moon;
             }
 
             if (data.rings) {
@@ -1474,6 +1495,16 @@ void main() {
                     child.rotation.y += delta * 0.05;
                 }
             });
+
+            // Animate Moon orbit around Earth
+            if (p.mesh.moonMesh) {
+                const moonOrbitSpeed = 0.3; // Moon orbits faster for visibility
+                const moonDistance = p.data.size * 3;
+                const moonAngle = this.uniforms.time.value * moonOrbitSpeed;
+                p.mesh.moonMesh.position.x = Math.cos(moonAngle) * moonDistance;
+                p.mesh.moonMesh.position.z = Math.sin(moonAngle) * moonDistance;
+                p.mesh.moonMesh.rotation.y = moonAngle; // Tidal lock (always face Earth)
+            }
         });
 
         if (this.asteroidBelt) {
