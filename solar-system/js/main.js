@@ -788,57 +788,21 @@ class SolarSystemApp {
     }
 
     createSpiralGalaxy() {
-        const count = 15000;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(count * 3);
-        const colors = new Float32Array(count * 3);
+        // NANO BANANA PRO: Use AI-generated galaxy skybox
+        const textureLoader = new THREE.TextureLoader();
+        const galaxyTexture = textureLoader.load('./textures/galaxy_skybox.png');
+        galaxyTexture.colorSpace = THREE.SRGBColorSpace;
 
-        const colorInside = new THREE.Color(0xff6030);
-        const colorOutside = new THREE.Color(0x1b3984);
-
-        for (let i = 0; i < count; i++) {
-            const i3 = i * 3;
-            const radius = Math.random() * 800 + 400; // 400 to 1200 distance
-            const spinAngle = radius * 0.005;
-            const branchAngle = (i % 3) * ((Math.PI * 2) / 3); // 3 arms
-
-            const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
-            const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
-            const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
-
-            positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-            positions[i3 + 1] = randomY * (radius / 1200) * 1.5; // Flattened but some height
-            positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
-
-            // Color mixed by radius
-            const mixedColor = colorInside.clone();
-            mixedColor.lerp(colorOutside, radius / 1200);
-
-            colors[i3] = mixedColor.r;
-            colors[i3 + 1] = mixedColor.g;
-            colors[i3 + 2] = mixedColor.b;
-        }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const material = new THREE.PointsMaterial({
-            size: 4, // Bigger particles
-            sizeAttenuation: true,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-            vertexColors: true,
-            map: this.createGlowTexture({ size: 64, inner: 'rgba(255,255,255,1)', outer: 'rgba(0,0,0,0)' }), // Very bright core
-            transparent: true,
-            opacity: 1.0 // Fully opaque material, alpha comes from texture
+        // Create a large sphere as skybox
+        const skyboxGeo = new THREE.SphereGeometry(2000, 64, 64);
+        const skyboxMat = new THREE.MeshBasicMaterial({
+            map: galaxyTexture,
+            side: THREE.BackSide // Render inside of sphere
         });
 
-        const galaxy = new THREE.Points(geometry, material);
-        // Tilt it a bit
-        galaxy.rotation.x = Math.PI / 6;
-        galaxy.rotation.z = Math.PI / 8;
-        this.scene.add(galaxy);
-        this.galaxyMesh = galaxy;
+        const skybox = new THREE.Mesh(skyboxGeo, skyboxMat);
+        this.scene.add(skybox);
+        this.galaxyMesh = skybox;
     }
 
     performIntro() {
