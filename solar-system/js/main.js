@@ -788,23 +788,83 @@ class SolarSystemApp {
     }
 
     createSpiralGalaxy() {
-        // NANO BANANA PRO: Use AI-generated galaxy skybox
-        const textureLoader = new THREE.TextureLoader();
-        const galaxyTexture = textureLoader.load('./textures/galaxy_skybox.png');
-        galaxyTexture.colorSpace = THREE.SRGBColorSpace;
+        // HYBRID APPROACH: Procedural stars (crisp) + subtle nebula background
 
-        // Create a large sphere as skybox
-        const skyboxGeo = new THREE.SphereGeometry(5000, 64, 64);
-        const skyboxMat = new THREE.MeshBasicMaterial({
-            map: galaxyTexture,
-            side: THREE.BackSide, // Render inside of sphere
-            depthWrite: false // Don't write to depth buffer so other objects render on top
+        // 1. PROCEDURAL STARFIELD - Sharp, crisp stars as 3D particles
+        const starCount = 50000; // Dense starfield
+        const starGeometry = new THREE.BufferGeometry();
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+
+        const starColorPalette = [
+            new THREE.Color(0xffffff), // White
+            new THREE.Color(0xffffee), // Warm white
+            new THREE.Color(0xeeeeff), // Cool white
+            new THREE.Color(0xaaccff), // Blue
+            new THREE.Color(0xffddaa), // Yellow/Orange
+            new THREE.Color(0xffaaaa), // Red
+        ];
+
+        for (let i = 0; i < starCount; i++) {
+            const i3 = i * 3;
+
+            // Distribute on a large sphere
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const radius = 3000 + Math.random() * 2000; // 3000-5000 distance
+
+            starPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+            starPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            starPositions[i3 + 2] = radius * Math.cos(phi);
+
+            // Random color from palette
+            const color = starColorPalette[Math.floor(Math.random() * starColorPalette.length)];
+            starColors[i3] = color.r;
+            starColors[i3 + 1] = color.g;
+            starColors[i3 + 2] = color.b;
+
+            // Varying star sizes - mostly tiny with some brighter ones
+            starSizes[i] = Math.random() < 0.98 ? 1 + Math.random() * 2 : 4 + Math.random() * 4;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+
+        const starMaterial = new THREE.PointsMaterial({
+            size: 2,
+            sizeAttenuation: true,
+            vertexColors: true,
+            transparent: true,
+            opacity: 1.0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
         });
 
-        const skybox = new THREE.Mesh(skyboxGeo, skyboxMat);
-        skybox.renderOrder = -1000; // Render first (background)
-        this.scene.add(skybox);
-        this.galaxyMesh = skybox;
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        stars.renderOrder = -999;
+        this.scene.add(stars);
+
+        // 2. NEBULA LAYER - Subtle colorful backdrop (low opacity)
+        const textureLoader = new THREE.TextureLoader();
+        const nebulaTexture = textureLoader.load('./textures/galaxy_skybox.png');
+        nebulaTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const nebulaGeo = new THREE.SphereGeometry(4500, 64, 64);
+        const nebulaMat = new THREE.MeshBasicMaterial({
+            map: nebulaTexture,
+            side: THREE.BackSide,
+            transparent: true,
+            opacity: 0.3, // Subtle, not overpowering
+            depthWrite: false
+        });
+
+        const nebula = new THREE.Mesh(nebulaGeo, nebulaMat);
+        nebula.renderOrder = -1000; // Behind stars
+        this.scene.add(nebula);
+
+        this.galaxyMesh = nebula;
     }
 
     performIntro() {
