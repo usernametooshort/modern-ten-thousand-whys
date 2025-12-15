@@ -5,7 +5,7 @@ const translations = {
         tagline: "以天文、地理、物理为篇章，让每个问题都拥有电影级的可视化答案。",
         nav_overview: "章节总览",
         catalog_title: "章节目录",
-        
+
         // Chapter & Nav
         chapter_1_nav: "第 1 篇 · 天文篇",
         chapter_1_overview: "天文篇概述",
@@ -19,14 +19,14 @@ const translations = {
         chapter_5_overview: "语言篇概述",
         chapter_6_nav: "第 6 篇 · 互动游戏",
         chapter_6_overview: "游戏篇概述",
-        
+
         // Status
         status_live: "已上线",
         status_beta: "试运行",
         status_soon: "筹备中",
         status_planning: "规划中",
         status_live_count: "已上线 {count} 个体验",
-        
+
         // Chapter 1 Details
         ch1_mini_tag: "第 1 篇 · 天文篇",
         ch1_title: "宇宙与星际动力学",
@@ -123,42 +123,42 @@ const translations = {
         star_ctrl_redgiant: "红巨星",
         star_ctrl_supernova: "超新星",
         star_ctrl_neutron: "中子星",
-        
+
         star_stage_nebula: "星云坍缩 (Nebula Collapse)",
         star_desc_nebula: "巨大的分子云在引力作用下开始坍缩。气体和尘埃聚集，中心温度逐渐升高。",
         star_fact_protagonist: "主角",
         star_fact_trigger: "触发机制",
         star_fact_state: "物质状态",
         star_fact_fate: "演化终点",
-        
+
         star_stage_protostar: "原恒星 (Protostar)",
         star_desc_protostar: "核心密度增加，两极喷射出强大的粒子流。吸积盘围绕旋转，为恒星的诞生输送养料。",
         star_fact_power: "能量来源",
         star_fact_feature: "显著特征",
         star_fact_structure: "结构",
         star_fact_duration: "持续时间",
-        
+
         star_stage_mainseq: "主序星 (Main Sequence)",
         star_desc_mainseq: "核聚变点燃！氢原子聚变成氦，释放巨大能量，抵抗引力坍缩，恒星进入稳定的壮年期（如太阳）。",
         star_fact_fuel: "燃料",
         star_fact_balance: "力学平衡",
         star_fact_lifespan: "寿命",
         star_fact_color: "光谱类型",
-        
+
         star_stage_redgiant: "红巨星 (Red Giant)",
         star_desc_redgiant: "氢燃料耗尽，核心收缩，外层急剧膨胀并冷却变红。恒星吞噬周围行星，体积增大数百倍。",
         star_fact_volume: "体积变化",
         star_fact_surface: "表面温度",
         star_fact_interior: "核心反应",
         star_fact_storm: "恒星风",
-        
+
         star_stage_supernova: "超新星爆发 (Supernova)",
         star_desc_supernova: "核心铁聚变停止，引力瞬间压垮恒星，引发宇宙中最剧烈的爆炸，亮度甚至超过整个星系。",
         star_fact_brightness: "瞬时亮度",
         star_fact_product: "产物",
         star_fact_mechanism: "爆发机制",
         star_fact_remnant: "残骸",
-        
+
         star_stage_neutron: "中子星 (Neutron Star)",
         star_desc_neutron: "爆炸后的核心被压缩成极高密度的中子星。它高速旋转，发出脉冲信号，是宇宙中的灯塔。",
         star_fact_density: "密度",
@@ -175,7 +175,7 @@ const translations = {
         btn_pause: "暂停",
         btn_resume: "继续",
         btn_reset: "重置视角",
-        
+
         // Shared
         highlights: "亮点",
         updated_time: "更新时间",
@@ -300,7 +300,7 @@ const translations = {
         exp_4_3_desc: "解密 0 和 1 的奥秘。通过交互式开关体验二进制与十进制转换，将你的名字翻译成机器码。",
         exp_4_3_hl_val: "二进制开关 / ASCII 翻译 / 赛博面板",
         exp_4_3_nav: "4.3 机器的语言",
-        
+
         // LLM Experience
         llm_eyebrow: "计算机科学与 AI",
         llm_title: "大语言模型 (LLM) 原理",
@@ -340,6 +340,12 @@ const translations = {
         exp_6_1_desc: "经典《北京浮生记》现代重制版！扮演2020年的年轻人，在8大城市间倒买倒卖28种时代热门商品——从口罩、NFT到ChatGPT账号、黑神话周边、小米SU7。应对封控、大厂裁员、AI革命等20+随机事件，管理健康与心情，72个月内还清房贷，实现财务自由！",
         exp_6_1_hl_val: "8大城市 / 28种商品 / 20+随机事件 / 健康心情系统 / 中德双语",
         exp_6_1_nav: "6.1 现代浮生记",
+
+        // Location
+        locu_detecting: "正在定位...",
+        locu_unknown: "未知位置 (默认星空)",
+        locu_searching: "正在查询...",
+        locu_prefix: "位置: ",
     },
     en: {
         app_title: "10,000 Whys · Immersive Science Encyclopedia",
@@ -347,7 +353,7 @@ const translations = {
         tagline: "Cinematic visualizations explaining Astronomy, Geography, and Physics concepts.",
         nav_overview: "Overview",
         catalog_title: "Contents",
-        
+
         chapter_1_nav: "Chapter 1 · Astronomy",
         chapter_1_overview: "Astronomy Overview",
         chapter_2_nav: "Chapter 2 · Geography",
@@ -360,13 +366,13 @@ const translations = {
         chapter_5_overview: "Language Overview",
         chapter_6_nav: "Chapter 6 · Interactive Games",
         chapter_6_overview: "Games Overview",
-        
+
         status_live: "Live",
         status_beta: "Beta",
         status_soon: "Coming Soon",
         status_planning: "Planned",
         status_live_count: "{count} Experiences Live",
-        
+
         ch1_mini_tag: "Chapter 1 · Astronomy",
         ch1_title: "Cosmos & Interstellar Dynamics",
         ch1_intro: "Journey through the Solar System and stellar evolution. Analyze planetary orbits, stellar jets, and cosmic energy.",
@@ -464,42 +470,42 @@ const translations = {
         star_ctrl_redgiant: "Red Giant",
         star_ctrl_supernova: "Supernova",
         star_ctrl_neutron: "Neutron Star",
-        
+
         star_stage_nebula: "Nebula Collapse",
         star_desc_nebula: "A giant molecular cloud collapses under gravity. Gas and dust accumulate, and the core temperature rises.",
         star_fact_protagonist: "Protagonist",
         star_fact_trigger: "Trigger",
         star_fact_state: "State",
         star_fact_fate: "Fate",
-        
+
         star_stage_protostar: "Protostar",
         star_desc_protostar: "Core density increases, ejecting powerful bipolar jets. An accretion disk feeds material to the birth of the star.",
         star_fact_power: "Energy Source",
         star_fact_feature: "Feature",
         star_fact_structure: "Structure",
         star_fact_duration: "Duration",
-        
+
         star_stage_mainseq: "Main Sequence",
         star_desc_mainseq: "Ignition! Hydrogen fuses into Helium, releasing immense energy to resist gravitational collapse. A stable star like the Sun.",
         star_fact_fuel: "Fuel",
         star_fact_balance: "Balance",
         star_fact_lifespan: "Lifespan",
         star_fact_color: "Type",
-        
+
         star_stage_redgiant: "Red Giant",
         star_desc_redgiant: "Hydrogen depleted, core contracts, outer layers expand and cool (turn red). It engulfs nearby planets, growing 100x in size.",
         star_fact_volume: "Volume",
         star_fact_surface: "Surface",
         star_fact_interior: "Core Reaction",
         star_fact_storm: "Stellar Wind",
-        
+
         star_stage_supernova: "Supernova",
         star_desc_supernova: "Iron fusion stops, gravity instantly crushes the star, triggering the universe's most violent explosion, outshining galaxies.",
         star_fact_brightness: "Brightness",
         star_fact_product: "Product",
         star_fact_mechanism: "Mechanism",
         star_fact_remnant: "Remnant",
-        
+
         star_stage_neutron: "Neutron Star",
         star_desc_neutron: "The compressed core becomes an extremely dense neutron star. It spins rapidly, emitting pulsar signals like a cosmic lighthouse.",
         star_fact_density: "Density",
@@ -515,7 +521,7 @@ const translations = {
         btn_pause: "Pause",
         btn_resume: "Resume",
         btn_reset: "Reset View",
-        
+
         highlights: "Highlights",
         updated_time: "Updated",
         released_time: "Released",
@@ -636,7 +642,7 @@ const translations = {
         exp_4_3_desc: "Decode the mystery of 0s and 1s. Experience binary-decimal conversion with interactive switches and translate your name into machine code.",
         exp_4_3_hl_val: "Binary Switches / ASCII Translation / Cyber Panel",
         exp_4_3_nav: "4.3 Machine Language",
-        
+
         exp_1_1_nav: "1.1 Solar System",
         exp_1_2_nav: "1.2 Stellar Life Cycle",
 
@@ -679,6 +685,12 @@ const translations = {
         exp_6_1_desc: "A modern remake of the classic trading game! Play as a young person in 2020, trade 28 trending items across 8 cities—from masks and NFTs to ChatGPT accounts and Xiaomi SU7. Navigate 20+ random events like lockdowns, tech layoffs, and AI revolutions. Manage your health & mood, pay off your mortgage, and achieve financial freedom in 72 months!",
         exp_6_1_hl_val: "8 Cities / 28 Items / 20+ Events / Health & Mood System / CN & DE",
         exp_6_1_nav: "6.1 Surviving",
+
+        // Location
+        locu_detecting: "Detecting Location...",
+        locu_unknown: "Unknown Location",
+        locu_searching: "Searching...",
+        locu_prefix: "Loc: ",
     },
     de: {
         app_title: "10.000 Warums · Immersives Wissenschaftslexikon",
@@ -686,7 +698,7 @@ const translations = {
         tagline: "Filmreife Visualisierungen für Astronomie, Geographie und Physik.",
         nav_overview: "Übersicht",
         catalog_title: "Inhalt",
-        
+
         chapter_1_nav: "Kapitel 1 · Astronomie",
         chapter_1_overview: "Astronomie Übersicht",
         chapter_2_nav: "Kapitel 2 · Geographie",
@@ -699,13 +711,13 @@ const translations = {
         chapter_5_overview: "Sprache Übersicht",
         chapter_6_nav: "Kapitel 6 · Interaktive Spiele",
         chapter_6_overview: "Spiele Übersicht",
-        
+
         status_live: "Live",
         status_beta: "Beta",
         status_soon: "Bald",
         status_planning: "Geplant",
         status_live_count: "{count} Erlebnisse Live",
-        
+
         ch1_mini_tag: "Kapitel 1 · Astronomie",
         ch1_title: "Kosmos & Interstellare Dynamik",
         ch1_intro: "Reise durch das Sonnensystem und die Sternentwicklung. Analysiere Planetenbahnen und kosmische Energie.",
@@ -803,42 +815,42 @@ const translations = {
         star_ctrl_redgiant: "Roter Riese",
         star_ctrl_supernova: "Supernova",
         star_ctrl_neutron: "Neutronenstern",
-        
+
         star_stage_nebula: "Nebelkollaps",
         star_desc_nebula: "Eine riesige Molekülwolke kollabiert unter der Schwerkraft. Gas und Staub sammeln sich, die Kerntemperatur steigt.",
         star_fact_protagonist: "Protagonist",
         star_fact_trigger: "Auslöser",
         star_fact_state: "Zustand",
         star_fact_fate: "Schicksal",
-        
+
         star_stage_protostar: "Protostern",
         star_desc_protostar: "Kerndichte steigt, bipolare Jets werden ausgestoßen. Eine Akkretionsscheibe füttert den entstehenden Stern.",
         star_fact_power: "Energiequelle",
         star_fact_feature: "Merkmal",
         star_fact_structure: "Struktur",
         star_fact_duration: "Dauer",
-        
+
         star_stage_mainseq: "Hauptreihe",
         star_desc_mainseq: "Zündung! Wasserstoff fusioniert zu Helium, setzt Energie frei und widersteht dem Kollaps. Ein stabiler Stern wie die Sonne.",
         star_fact_fuel: "Brennstoff",
         star_fact_balance: "Gleichgewicht",
         star_fact_lifespan: "Lebensdauer",
         star_fact_color: "Typ",
-        
+
         star_stage_redgiant: "Roter Riese",
         star_desc_redgiant: "Wasserstoff verbraucht, Kern schrumpft, Hülle expandiert und kühlt ab (wird rot). Er verschlingt nahe Planeten.",
         star_fact_volume: "Volumen",
         star_fact_surface: "Oberfläche",
         star_fact_interior: "Kernreaktion",
         star_fact_storm: "Sternwind",
-        
+
         star_stage_supernova: "Supernova",
         star_desc_supernova: "Eisenfusion stoppt, Schwerkraft zerquetscht den Stern sofort und löst die gewaltigste Explosion des Universums aus.",
         star_fact_brightness: "Helligkeit",
         star_fact_product: "Produkt",
         star_fact_mechanism: "Mechanismus",
         star_fact_remnant: "Überrest",
-        
+
         star_stage_neutron: "Neutronenstern",
         star_desc_neutron: "Der komprimierte Kern wird zum extrem dichten Neutronenstern. Er rotiert schnell und sendet Pulsarsignale aus.",
         star_fact_density: "Dichte",
@@ -854,7 +866,7 @@ const translations = {
         btn_pause: "Pause",
         btn_resume: "Weiter",
         btn_reset: "Ansicht zurücksetzen",
-        
+
         highlights: "Highlights",
         updated_time: "Aktualisiert",
         released_time: "Veröffentlicht",
@@ -1018,6 +1030,12 @@ const translations = {
         exp_6_1_desc: "Überlebe in Deutschland! Starte 2020, handle mit 28 trendigen Waren in 8 Städten—von Pfandflaschen und Döner bis zu ChatGPT-Accounts und E-Autos. Meistere 20+ Zufallsereignisse wie Corona-Lockdown, Energiekrise und KI-Boom. Manage Gesundheit & Stimmung, zahle deine Hypothek ab und erreiche finanzielle Freiheit in 72 Monaten!",
         exp_6_1_hl_val: "8 Städte / 28 Waren / 20+ Events / Gesundheit & Stimmung / DE & CN",
         exp_6_1_nav: "6.1 Surviving",
+
+        // Location
+        locu_detecting: "Standort wird ermittelt...",
+        locu_unknown: "Unbekannter Ort",
+        locu_searching: "Suche...",
+        locu_prefix: "Ort: ",
     }
 };
 
@@ -1033,7 +1051,7 @@ class I18n {
         localStorage.setItem('app_lang', lang);
         this.applyTranslations();
         this.updateActiveButton();
-        
+
         // Dispatch event for other components
         window.dispatchEvent(new CustomEvent('languageChanged', { detail: lang }));
     }
@@ -1042,7 +1060,7 @@ class I18n {
         let text = this.translations[this.currentLang][key];
         // Fallback to English if key missing in current lang (except for zh root)
         if (!text && this.currentLang !== 'en') {
-             text = this.translations['en'][key];
+            text = this.translations['en'][key];
         }
         // Fallback to key if missing everywhere
         if (!text) return key;

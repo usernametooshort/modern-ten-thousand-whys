@@ -225,28 +225,43 @@ if (navigator.geolocation) {
     updateEnvironment();
 }
 
-async function updateLocationDisplay(lat, lon) {
+// Listen for language changes to update city name
+window.addEventListener('languageChanged', (e) => {
+    const newLang = e.detail;
+    // Re-fetch location text if we have coords
+    if (userLat && userLon) {
+        updateLocationDisplay(userLat, userLon, newLang);
+    }
+});
+
+async function updateLocationDisplay(lat, lon, lang = 'en') {
     const locText = document.getElementById('location-text');
+    const i18n = window.i18n; // Access global instance
+
     if (!lat || !lon) {
-        locText.innerText = 'Unknown Location (Using Default Star Map)';
+        if (locText) locText.innerText = i18n ? i18n.get('locu_unknown') : 'Unknown Location';
         return;
     }
 
-    locText.innerText = `Searching... ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    if (locText) locText.innerText = (i18n ? i18n.get('locu_searching') : 'Searching...') + ` ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
 
     try {
-        // Use BigDataCloud purely client-side free API (Reverse Geocoding)
-        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+        // Map app lang codes to BigDataCloud supported langs where possible
+        // BigDataCloud supports: en, zh, de, etc.
+        const apiLang = lang === 'zh' ? 'zh' : (lang === 'de' ? 'de' : 'en');
+
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${apiLang}`);
         const data = await response.json();
 
         const city = data.city || data.locality || data.principalSubdivision || 'Earth';
         const country = data.countryName || '';
 
-        locText.innerText = `${city}, ${country}`;
+        // Construct display string
+        if (locText) locText.innerText = `${city}, ${country}`;
 
     } catch (e) {
         console.warn('City fetch failed', e);
-        locText.innerText = `Lat: ${lat.toFixed(2)}, Lon: ${lon.toFixed(2)}`;
+        if (locText) locText.innerText = `Lat: ${lat.toFixed(2)}, Lon: ${lon.toFixed(2)}`;
     }
 }
 

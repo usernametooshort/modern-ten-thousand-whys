@@ -737,8 +737,13 @@ footer {
     }
 
     .location-badge {
-        display: none;
-        /* Hide on small mobile to save space */
+        display: flex;
+        /* Show on mobile */
+        margin: 10px 0;
+        /* Add some spacing */
+        font-size: 0.7rem;
+        /* Smaller font */
+        width: fit-content;
     }
 
     .hero {
