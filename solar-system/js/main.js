@@ -12,6 +12,152 @@ const CONFIG = {
 };
 
 // Shaders
+const EarthVertexShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz;
+    gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const EarthFragmentShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+uniform float time;
+
+// Simplex 3D Noise 
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v) {
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+  i = mod289(i);
+  vec4 p = permute( permute( permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  float n_ = 0.142857142857;
+  vec3  ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+}
+
+void main() {
+    // 3D Noise for Seamless Sphere Terrain
+    vec3 seed = normalize(vNormal) * 3.0; // Scale of continents
+    
+    // Fractal Brownian Motion (approximated manually)
+    float n = snoise(seed); 
+    float n2 = snoise(seed * 2.0 + vec3(5.2)); 
+    float n3 = snoise(seed * 8.0 + vec3(2.1));
+    float n4 = snoise(seed * 16.0); // Micro details
+    
+    // Combine octaves
+    float elevation = n * 0.5 + n2 * 0.25 + n3 * 0.12 + n4 * 0.05;
+    
+    // Colors
+    vec3 oceanDeep = vec3(0.0, 0.02, 0.2);
+    vec3 oceanShallow = vec3(0.0, 0.15, 0.4);
+    vec3 sand = vec3(0.76, 0.70, 0.50);
+    vec3 grass = vec3(0.05, 0.35, 0.05);
+    vec3 forest = vec3(0.01, 0.15, 0.02);
+    vec3 mountain = vec3(0.35, 0.30, 0.25);
+    vec3 snow = vec3(1.0, 1.0, 1.0);
+    
+    vec3 finalColor = oceanDeep;
+    float specular = 1.0; 
+    
+    // Ocean/Land thresholds
+    float waterLevel = 0.05; 
+    
+    if (elevation < waterLevel) {
+        float depth = (waterLevel - elevation) * 3.0;
+        finalColor = mix(oceanShallow, oceanDeep, clamp(depth, 0.0, 1.0));
+        specular = 1.0;
+    } else {
+        float landHeight = elevation - waterLevel;
+        specular = 0.0; // Land is matte
+        
+        if (landHeight < 0.02) finalColor = sand;
+        else if (landHeight < 0.2) finalColor = mix(grass, forest, smoothstep(0.02, 0.2, landHeight));
+        else if (landHeight < 0.45) finalColor = mix(forest, mountain, smoothstep(0.2, 0.45, landHeight));
+        else finalColor = mix(mountain, snow, smoothstep(0.45, 0.6, landHeight));
+    }
+    
+    // Standard Lighting
+    vec3 normal = normalize(vNormal);
+    // Sun is at (0,0,0) in world, but we are orbiting. 
+    // Simplified: Light always comes from (0,0,0) towards the planet.
+    // Planet position in world space is needed to know where sun is relative to surface.
+    // Hack: Assume Directional Light from center for now or pass uniform.
+    // Since planet rotates, and sun is at 0,0,0, the "Sun Direction" in VIEW space is calculated in vertex.
+    // But for this simple shader, let's just assume a static light for beauty, OR
+    // Better: Use vNormal from modelView.
+    // The sun is roughly at 'view' origin if we look at planet? No.
+    // Let's make it look good: directional light from top-left.
+    
+    vec3 lightDir = normalize(vec3(1.0, 0.5, 1.0)); 
+    float dotLN = max(dot(normal, lightDir), 0.0);
+    
+    // Specular
+    vec3 viewDir = normalize(vViewPosition);
+    vec3 halfDir = normalize(lightDir + viewDir);
+    float specAngle = max(dot(normal, halfDir), 0.0);
+    float specPower = 64.0;
+    float specAmount = pow(specAngle, specPower) * specular;
+    
+    // Rim Lighting (Atmosphere)
+    float rim = 1.0 - max(dot(viewDir, normal), 0.0);
+    rim = pow(rim, 3.0);
+    vec3 atmosphere = vec3(0.2, 0.5, 1.0) * rim * 0.8;
+    
+    vec3 color = finalColor * (dotLN + 0.1) + vec3(1.0)*specAmount + atmosphere;
+    
+    gl_FragColor = vec4(color, 1.0);
+}
+`;
 const AtmosphereVertexShader = `
 varying vec3 vNormal;
 void main() {
@@ -654,6 +800,156 @@ class SolarSystemApp {
         const sun = new THREE.Mesh(geometry, material);
         this.scene.add(sun);
 
+        const EarthVertexShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+varying vec3 vSunDirection;
+
+uniform vec3 sunPosition;
+
+void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz;
+    
+    // Calculate sun direction in view space (assuming sun is at 0,0,0 world for simplicity or passed in)
+    // Actually, let's pass sun position relative to planet or just use a fixed light dir for the shader aesthetics
+    // Better: Standard three.js lighting or approximations. 
+    // Let's rely on a custom uniform for sun direction.
+    
+    gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+        const EarthFragmentShader = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+uniform float time;
+uniform sampler2D dayTexture; // We might not use these if fully procedural
+uniform vec3 sunDirection;
+
+// Simplex 3D Noise Helper
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v) {
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+  i = mod289(i);
+  vec4 p = permute( permute( permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  float n_ = 0.142857142857; // 1.0/7.0
+  vec3  ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+}
+
+void main() {
+    // 1. Procedural Terrain Generation
+    // Map UV to Sphere Coords for seamless noise (approximation)
+    // Actually, we need 3D coords for seamless noise on a sphere.
+    // Let's use vNormal as the 3D seed, it's perfect for spheres!
+    vec3 seed = vNormal * 2.0; 
+    
+    float n = snoise(seed * 1.5 + vec3(0.0)); // Base continents
+    float n2 = snoise(seed * 4.0 + vec3(1.2)); // Details
+    float n3 = snoise(seed * 10.0); // Rocky details
+    
+    float elevation = n * 0.6 + n2 * 0.3 + n3 * 0.1;
+    
+    // 2. Biome Colors
+    vec3 oceanDeep = vec3(0.0, 0.05, 0.2);
+    vec3 oceanShallow = vec3(0.0, 0.2, 0.4);
+    vec3 sand = vec3(0.76, 0.70, 0.50);
+    vec3 grass = vec3(0.1, 0.4, 0.1);
+    vec3 forest = vec3(0.05, 0.25, 0.05);
+    vec3 mountain = vec3(0.4, 0.35, 0.3);
+    vec3 snow = vec3(1.0, 1.0, 1.0);
+    
+    vec3 color = oceanDeep;
+    float specular = 0.5; // High specular for ocean
+    
+    if (elevation > 0.0) { // Water level
+        color = mix(oceanShallow, val > 0.05 ? sand : oceanShallow, smoothstep(0.0, 0.05, elevation));
+        specular = 0.2; // Less specular in shallow
+    }
+    if (elevation > 0.05) { // Land start
+        color = mix(sand, grass, smoothstep(0.05, 0.1, elevation));
+        specular = 0.0; // No specular on land
+    }
+    if (elevation > 0.2) {
+        color = mix(grass, forest, smoothstep(0.2, 0.4, elevation));
+    }
+    if (elevation > 0.45) {
+        color = mix(forest, mountain, smoothstep(0.45, 0.6, elevation));
+    }
+    if (elevation > 0.7) {
+        color = mix(mountain, snow, smoothstep(0.7, 0.8, elevation));
+    }
+    
+    // 3. Lighting (Simple directional)
+    vec3 viewDir = normalize(vViewPosition);
+    vec3 normal = normalize(vNormal);
+    vec3 lightDir = normalize(vec3(50.0, 20.0, 50.0)); // Fixed sun dir for now, should be uniform
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    // Specular
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    
+    // Day/Night and Atmosphere
+    vec3 finalColor = color * (diff + 0.1); // Ambient
+    finalColor += vec3(1.0) * spec * specular; // Sun reflection on water
+    
+    // Rim Light (Atmosphere)
+    float rim = 1.0 - max(dot(viewDir, normal), 0.0);
+    rim = pow(rim, 4.0);
+    finalColor += vec3(0.4, 0.6, 1.0) * rim * 0.5;
+
+    gl_FragColor = vec4(finalColor, 1.0);
+}
+`;
+
         // Multiple Glow Layers for Blinding Realism
         // Inner intense white/yellow
         const glowMat = new THREE.SpriteMaterial({
@@ -712,22 +1008,52 @@ class SolarSystemApp {
             this.orbits.push(orbit);
 
             const planetGeo = new THREE.SphereGeometry(data.size, 64, 64);
-            const texture = this.generatePlanetTexture(data);
-            const material = new THREE.MeshStandardMaterial({
-                map: texture.map,
-                color: new THREE.Color(0xffffff),
-                roughness: data.type === 'gas' ? 0.8 : 0.7,
-                metalness: data.type === 'rocky' ? 0.2 : 0.0,
-                bumpMap: texture.bump,
-                bumpScale: data.bumpScale || 0.02
-            });
+            let material;
+            if (data.type === 'earth') {
+                // NANO BANANA UPGRADE: Procedural Shader Material
+                material = new THREE.ShaderMaterial({
+                    vertexShader: EarthVertexShader,
+                    fragmentShader: EarthFragmentShader,
+                    uniforms: {
+                        time: this.uniforms.time
+                    }
+                });
+            } else {
+                const textureData = this.generatePlanetTexture(data);
+                material = new THREE.MeshStandardMaterial({
+                    map: textureData.map,
+                    bumpMap: textureData.bump,
+                    bumpScale: data.type === 'gas' ? 0 : 0.05,
+                    roughness: data.type === 'gas' ? 1.0 : 0.7,
+                    metalness: 0.1
+                });
+            }
+
             const planet = new THREE.Mesh(planetGeo, material);
             planet.position.x = data.distance;
             planet.castShadow = true;
             planet.receiveShadow = true;
             group.add(planet);
 
-            if (data.atmosphereGlow) {
+            // Add Atmosphere for Earth (Enhanced)
+            if (data.type === 'earth') {
+                const atmoGeo = new THREE.SphereGeometry(data.size * 1.25, 64, 64);
+                const atmoMat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        color: { value: new THREE.Color(0x3366ff) },
+                        intensity: { value: 0.5 },
+                        power: { value: 4.0 }
+                    },
+                    vertexShader: AtmosphereVertexShader,
+                    fragmentShader: AtmosphereFragmentShader,
+                    transparent: true,
+                    side: THREE.BackSide,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const atmo = new THREE.Mesh(atmoGeo, atmoMat);
+                planet.add(atmo);
+            } else if (data.atmosphereGlow) { // Existing atmosphere logic for other planets
                 const atmoGeo = new THREE.SphereGeometry(data.size * 1.15, 64, 64);
                 const atmoMat = new THREE.ShaderMaterial({
                     uniforms: {
@@ -750,40 +1076,43 @@ class SolarSystemApp {
 
             // Cloud Layer for Earth
             if (data.type === 'earth') {
-                const cloudGeo = new THREE.SphereGeometry(data.size * 1.02, 64, 64);
-                // Simple noise cloud texture
+                const cloudGeo = new THREE.SphereGeometry(data.size * 1.03, 64, 64);
                 const cloudCanvas = document.createElement('canvas');
                 cloudCanvas.width = 1024; cloudCanvas.height = 512;
                 const cCtx = cloudCanvas.getContext('2d');
-                const cImg = cCtx.createImageData(1024, 512);
-                for (let i = 0; i < cImg.data.length; i += 4) {
-                    // Reuse simplex noise... we need to access it or duplicate logic. 
-                    // Let's use a simple random noise here for speed or assume transparency
-                    // Better: use the simplex instance we added.
+                // Transparent background
+
+                // Advanced Cloud Noise
+                const imgData = cCtx.createImageData(1024, 512);
+                for (let i = 0; i < imgData.data.length; i += 4) {
                     const x = (i / 4) % 1024;
                     const y = Math.floor((i / 4) / 1024);
-                    // Use higher freq noise for clouds
-                    const nx = (x / 1024) * Math.PI * 2;
-                    const ny = (y / 512) * 2;
-                    let n = simplex.noise(Math.cos(nx) * 4 + 20, Math.sin(nx) * 4 + ny * 4); // Offset to avoid continent match
+                    // Mapping to sphere coords roughly
+                    const nx = (x / 1024) * Math.PI * 6; // More repeats
+                    const ny = (y / 512) * Math.PI * 4;
 
-                    const val = (n > 0.2) ? 255 : 0; // Cloud threshold
-                    const alpha = (n > 0.2) ? 200 : 0;
-                    cImg.data[i] = 255;
-                    cImg.data[i + 1] = 255;
-                    cImg.data[i + 2] = 255;
-                    cImg.data[i + 3] = alpha;
+                    let n = simplex.noise(Math.cos(nx), Math.sin(nx) * 2.0 + ny);
+                    n += 0.5 * simplex.noise(nx * 2, ny * 2 + 10);
+
+                    // Tweak threshold for wispy clouds
+                    const alpha = smoothstep(0.4, 0.8, n) * 200;
+
+                    imgData.data[i] = 255;
+                    imgData.data[i + 1] = 255;
+                    imgData.data[i + 2] = 255;
+                    imgData.data[i + 3] = alpha;
                 }
-                cCtx.putImageData(cImg, 0, 0);
+                cCtx.putImageData(imgData, 0, 0);
+
                 const cloudTex = new THREE.CanvasTexture(cloudCanvas);
                 const cloudMat = new THREE.MeshStandardMaterial({
                     map: cloudTex,
                     transparent: true,
-                    opacity: 0.8,
-                    side: THREE.DoubleSide // Visible from inside? No.
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
                 });
                 const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-                clouds.isClouds = true; // For animation
+                clouds.isClouds = true;
                 planet.add(clouds);
             }
 
