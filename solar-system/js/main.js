@@ -794,13 +794,15 @@ class SolarSystemApp {
         galaxyTexture.colorSpace = THREE.SRGBColorSpace;
 
         // Create a large sphere as skybox
-        const skyboxGeo = new THREE.SphereGeometry(2000, 64, 64);
+        const skyboxGeo = new THREE.SphereGeometry(5000, 64, 64);
         const skyboxMat = new THREE.MeshBasicMaterial({
             map: galaxyTexture,
-            side: THREE.BackSide // Render inside of sphere
+            side: THREE.BackSide, // Render inside of sphere
+            depthWrite: false // Don't write to depth buffer so other objects render on top
         });
 
         const skybox = new THREE.Mesh(skyboxGeo, skyboxMat);
+        skybox.renderOrder = -1000; // Render first (background)
         this.scene.add(skybox);
         this.galaxyMesh = skybox;
     }
