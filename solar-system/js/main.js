@@ -7,7 +7,7 @@ const CONFIG = {
     visualScale: 1.0,
     cameraFOV: 45,
     cameraNear: 0.1,
-    cameraFar: 5000, // Further view distance
+    cameraFar: 10000, // Increased to see galaxy skybox
     bgColor: 0x000000,
 };
 
@@ -948,9 +948,7 @@ class SolarSystemApp {
         sunMap.colorSpace = THREE.SRGBColorSpace;
 
         const material = new THREE.MeshBasicMaterial({
-            map: sunMap,
-            emissive: 0xff6600,
-            emissiveIntensity: 1.0
+            map: sunMap
         });
         const sun = new THREE.Mesh(geometry, material);
         this.scene.add(sun);
