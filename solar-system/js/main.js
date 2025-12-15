@@ -1300,48 +1300,20 @@ void main() {
 
 
 
-            // Cloud Layer for Earth
+            // Cloud Layer for Earth (AI-generated texture)
             if (data.type === 'earth') {
-                const cloudGeo = new THREE.SphereGeometry(data.size * 1.03, 64, 64);
-                const cloudCanvas = document.createElement('canvas');
-                cloudCanvas.width = 1024; cloudCanvas.height = 512;
-                const cCtx = cloudCanvas.getContext('2d');
-                // Transparent background
+                const cloudGeo = new THREE.SphereGeometry(data.size * 1.02, 64, 64);
+                const cloudLoader = new THREE.TextureLoader();
+                const cloudTex = cloudLoader.load('./textures/earth_clouds.png');
+                cloudTex.colorSpace = THREE.SRGBColorSpace;
 
-                // Helper for cloud generation
-                const smoothstep = (min, max, value) => {
-                    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-                    return x * x * (3 - 2 * x);
-                };
-
-                // Advanced Cloud Noise
-                const imgData = cCtx.createImageData(1024, 512);
-                for (let i = 0; i < imgData.data.length; i += 4) {
-                    const x = (i / 4) % 1024;
-                    const y = Math.floor((i / 4) / 1024);
-                    // Mapping to sphere coords roughly
-                    const nx = (x / 1024) * Math.PI * 6; // More repeats
-                    const ny = (y / 512) * Math.PI * 4;
-
-                    let n = simplex.noise(Math.cos(nx), Math.sin(nx) * 2.0 + ny);
-                    n += 0.5 * simplex.noise(nx * 2, ny * 2 + 10);
-
-                    // Tweak threshold for wispy clouds
-                    const alpha = smoothstep(0.4, 0.8, n) * 200;
-
-                    imgData.data[i] = 255;
-                    imgData.data[i + 1] = 255;
-                    imgData.data[i + 2] = 255;
-                    imgData.data[i + 3] = alpha;
-                }
-                cCtx.putImageData(imgData, 0, 0);
-
-                const cloudTex = new THREE.CanvasTexture(cloudCanvas);
                 const cloudMat = new THREE.MeshStandardMaterial({
                     map: cloudTex,
                     transparent: true,
-                    opacity: 0.9,
-                    side: THREE.DoubleSide
+                    opacity: 0.6,
+                    alphaMap: cloudTex, // Use same texture for alpha
+                    side: THREE.DoubleSide,
+                    depthWrite: false
                 });
                 const clouds = new THREE.Mesh(cloudGeo, cloudMat);
                 clouds.isClouds = true;
