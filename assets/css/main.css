@@ -44,6 +44,8 @@ body {
     margin: 0;
     font-family: var(--font-sans);
     background-color: var(--bg-deep);
+    /* Fallback background so it's never black */
+    background: linear-gradient(160deg, #050b14 0%, #0a1122 100%);
     color: var(--text-primary);
     overflow-x: hidden;
     line-height: 1.6;
@@ -173,6 +175,22 @@ a {
     background: var(--accent-cyan);
     border-radius: 50%;
     box-shadow: 0 0 10px var(--accent-cyan);
+}
+
+.location-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--accent-cyan);
+    background: rgba(0, 243, 255, 0.05);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 243, 255, 0.2);
+    margin-left: 20px;
+    margin-right: auto;
+    /* Push nav to right */
+    backdrop-filter: blur(4px);
 }
 
 .site-header nav {
@@ -716,6 +734,11 @@ footer {
 @media (max-width: 600px) {
     .site-header {
         padding: 0 20px;
+    }
+
+    .location-badge {
+        display: none;
+        /* Hide on small mobile to save space */
     }
 
     .hero {

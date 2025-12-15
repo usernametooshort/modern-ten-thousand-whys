@@ -3,9 +3,7 @@ import * as THREE from 'three';
 
 // --- Sky Shader definition (Inlined for reliability) ---
 const Sky = function () {
-
     const shader = SkyShader;
-
     const material = new THREE.ShaderMaterial({
         name: 'SkyShader',
         fragmentShader: shader.fragmentShader,
@@ -14,7 +12,6 @@ const Sky = function () {
         side: THREE.BackSide,
         depthWrite: false
     });
-
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.isSky = true;
@@ -30,7 +27,6 @@ const SkyShader = {
         'sunPosition': { value: new THREE.Vector3() },
         'up': { value: new THREE.Vector3(0, 1, 0) }
     },
-
     vertexShader: `
         uniform vec3 sunPosition;
         uniform float rayleigh;
@@ -78,7 +74,6 @@ const SkyShader = {
             vBetaM = totalMie( turbidity ) * mieCoefficient;
         }
     `,
-
     fragmentShader: `
         varying vec3 vWorldPosition;
         varying vec3 vSunDirection;
@@ -110,6 +105,7 @@ const SkyShader = {
             vec3 Lin = pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * ( 1.0 - exp( - ( vBetaR + vBetaM ) ) ), vec3( 1.5 ) );
             Lin *= mix( vec3( 1.0 ), pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * ( 1.0 - exp( - ( vBetaR + vBetaM ) ) ), vec3( 0.5 ) ), clamp( pow( 1.0 - dot( up, vSunDirection ), 5.0 ), 0.0, 1.0 ) );
             vec3 finalColor = Lin;
+            // Tone mapping approximation
             finalColor = vec3( 1.0 ) - exp( - finalColor );
             gl_FragColor = vec4( finalColor, 1.0 );
         }
@@ -122,19 +118,20 @@ const scene = new THREE.Scene();
 
 // Camera
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000000);
-camera.position.set(0, 0, 0);
+camera.position.set(0, 0, 5); // Moved back slightly for particle depth
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
-    antialias: true
+    antialias: true,
+    alpha: true // Enable alpha for fallback CSS
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.5;
 
-// --- Sky Setup ---
+// --- 1. Realistic Sky Setup ---
 const sky = new Sky();
 sky.scale.setScalar(450000);
 scene.add(sky);
@@ -147,7 +144,30 @@ skyUniforms['rayleigh'].value = 3;
 skyUniforms['mieCoefficient'].value = 0.005;
 skyUniforms['mieDirectionalG'].value = 0.7;
 
-// --- Stars Setup ---
+// --- 2. Particle "Warp" Effect (Restored) ---
+const particlesGeometry = new THREE.BufferGeometry();
+const isMobile = window.innerWidth < 768;
+const particlesCount = isMobile ? 800 : 2000;
+const posArray = new Float32Array(particlesCount * 3);
+
+for (let i = 0; i < particlesCount * 3; i++) {
+    // Spread particles in a wide area around the camera
+    posArray[i] = (Math.random() - 0.5) * 40;
+}
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.05,
+    color: 0x00f3ff, // Cyan accent
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending // Glow effect
+});
+
+const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+scene.add(particlesMesh);
+
+// --- 3. Sidereal Stars Setup ---
 const starsGroup = new THREE.Group();
 scene.add(starsGroup);
 
@@ -155,15 +175,18 @@ const starsGeometry = new THREE.BufferGeometry();
 const starsCount = 5000;
 const starsPosArray = new Float32Array(starsCount * 3);
 
+// Distribute particles on a sphere
 for (let i = 0; i < starsCount; i++) {
-    const r = 400000;
+    const r = 400000; // Inside skybox but far
     const u = Math.random();
     const v = Math.random();
     const theta = 2 * Math.PI * u;
     const phi = Math.acos(2 * v - 1);
+
     const x = r * Math.sin(phi) * Math.cos(theta);
     const y = r * Math.sin(phi) * Math.sin(theta);
     const z = r * Math.cos(phi);
+
     starsPosArray[i * 3] = x;
     starsPosArray[i * 3 + 1] = y;
     starsPosArray[i * 3 + 2] = z;
@@ -173,10 +196,7 @@ starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPosArray, 
 const starsMaterial = new THREE.PointsMaterial({
     color: 0xffffff,
     size: 500,
-    sizeAttenuation: true, // Size depends on distance?
-    // Wait, if sizeAttenuation is true, size is in world units. 500 world units at 400,000 distance is 500/400000 * screen_height ~ small.
-    // If false, size is screen pixels.
-    // Let's use false for robust visibility if needed, but true is more realistic.
+    sizeAttenuation: true,
     transparent: true,
     opacity: 0
 });
@@ -189,17 +209,45 @@ starsGroup.add(starsMesh);
 let userLat = 31.2304;
 let userLon = 121.4737;
 
+// Try to get location
 if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((pos) => {
         userLat = pos.coords.latitude;
         userLon = pos.coords.longitude;
+        updateLocationDisplay(userLat, userLon);
         updateEnvironment();
     }, (err) => {
         console.warn('Geolocation denied, using default.');
+        updateLocationDisplay(null, null); // Show default or error
         updateEnvironment();
     });
 } else {
     updateEnvironment();
+}
+
+async function updateLocationDisplay(lat, lon) {
+    const locText = document.getElementById('location-text');
+    if (!lat || !lon) {
+        locText.innerText = 'Unknown Location (Using Default Star Map)';
+        return;
+    }
+
+    locText.innerText = `Searching... ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+
+    try {
+        // Use BigDataCloud purely client-side free API (Reverse Geocoding)
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+        const data = await response.json();
+
+        const city = data.city || data.locality || data.principalSubdivision || 'Earth';
+        const country = data.countryName || '';
+
+        locText.innerText = `${city}, ${country}`;
+
+    } catch (e) {
+        console.warn('City fetch failed', e);
+        locText.innerText = `Lat: ${lat.toFixed(2)}, Lon: ${lon.toFixed(2)}`;
+    }
 }
 
 function updateEnvironment() {
@@ -240,7 +288,12 @@ function updateEnvironment() {
         starOpacity = THREE.MathUtils.mapLinear(elevation, 5, -10, 0, 1);
         starOpacity = Math.min(Math.max(starOpacity, 0), 1);
     }
+    // Blend realistic stars
     starsMaterial.opacity = starOpacity;
+
+    // Also blend the "Warp Particles" based on day/night?
+    // User wants "Amazing" effects. Let's keep Warp Particles visible ALWAYS but maybe brighter at night.
+    particlesMaterial.opacity = Math.max(0.4, starOpacity);
 
     const gst = utcHours + 0.0657098244 * day + 6.6;
     const lst = (gst + userLon / 15) % 24;
@@ -256,6 +309,11 @@ function updateEnvironment() {
 
 // --- Animation Loop ---
 let lastTime = 0;
+let mouseX = 0;
+let mouseY = 0;
+let targetX = 0;
+let targetY = 0;
+
 function animate(time) {
     requestAnimationFrame(animate);
 
@@ -264,6 +322,16 @@ function animate(time) {
         lastTime = time;
     }
 
+    // --- Particle Animation (The "Warp") ---
+    targetX = mouseX * 0.001;
+    targetY = mouseY * 0.001;
+
+    // Smooth rotation of particle cloud
+    particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
+    particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
+    particlesMesh.rotation.y += 0.002; // Constant spin
+
+    // Gentle camera movement
     camera.position.x += (mouseX * 0.05 - camera.position.x) * 0.05;
     camera.position.y += (-mouseY * 0.05 - camera.position.y) * 0.05;
     camera.lookAt(scene.position);
@@ -271,17 +339,17 @@ function animate(time) {
     renderer.render(scene, camera);
 }
 
-let mouseX = 0;
-let mouseY = 0;
 window.addEventListener('mousemove', (e) => {
-    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    mouseX = (e.clientX - window.innerWidth / 2);
+    mouseY = (e.clientY - window.innerHeight / 2);
 });
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    const isMobileResize = window.innerWidth < 768;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileResize ? 1.5 : 2));
 });
 
 // UI Logic
@@ -314,4 +382,5 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 });
 
 animate(0);
+// Initial update
 updateEnvironment();
