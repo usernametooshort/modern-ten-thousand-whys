@@ -51,12 +51,8 @@ const SunFragmentShader = `
 varying vec2 vUv;
 varying vec3 vNormal;
 uniform float time;
-uniform sampler2D noiseTexture;
 
 // Simplex 3D Noise 
-// (Simplified inline implementation or use texture for performance)
-// We'll use a procedural noise approach based on UV and Time
-
 float hash(float n) { return fract(sin(n) * 1e4); }
 float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
@@ -72,7 +68,6 @@ float noise(vec2 x) {
 }
 
 void main() {
-    // Moving noise layers
     float n1 = noise(vUv * 10.0 + vec2(time * 0.1, time * 0.2));
     float n2 = noise(vUv * 20.0 - vec2(time * 0.2, time * 0.1));
     float n3 = noise(vUv * 5.0 + vec2(0.0, time * 0.05));
@@ -86,23 +81,123 @@ void main() {
     vec3 finalColor = mix(darkColor, baseColor, total);
     finalColor = mix(finalColor, hotColor, pow(total, 3.0));
     
-    // Rim glow
     float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
     finalColor += vec3(1.0, 0.6, 0.1) * intensity;
+    
+    // Extra core brightness
+    finalColor += vec3(0.2, 0.1, 0.0) * pow(total, 2.0);
 
     gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
 
+const GalaxyVertexShader = `
+varying vec3 vWorldPosition;
+void main() {
+    vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`;
+
+const GalaxyFragmentShader = `
+varying vec3 vWorldPosition;
+uniform float time;
+
+// Simplex Noise 3D functionality
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+float snoise(vec3 v) { 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+  // First corner
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+  // Other corners
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+  //   x1 = x0 - i1  + 1.0 * C.xxx;
+  //   x2 = x0 - i2  + 2.0 * C.xxx;
+  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+  // Permutations
+  i = mod289(i); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  // Gradients: 7x7 points over a square, mapped onto an octahedron.
+  // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+  float n_ = 0.142857142857; // 1.0/7.0
+  vec3  ns = n_ * D.wyz - D.xzx;
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+  //Normalise gradients
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+  // Mix final noise value
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+}
+
+void main() {
+    vec3 dir = normalize(vWorldPosition);
+    float n = snoise(dir * 2.0 + vec3(time * 0.05));
+    float n2 = snoise(dir * 5.0 - vec3(time * 0.02));
+    
+    float stars = pow(max(0.0, snoise(dir * 150.0)), 20.0) * 2.0;
+    
+    vec3 colorA = vec3(0.0, 0.0, 0.05); // Deep Blue
+    vec3 colorB = vec3(0.2, 0.0, 0.3); // Purple
+    vec3 colorC = vec3(0.0, 0.1, 0.2); // Teal
+    
+    vec3 nebula = mix(colorA, colorB, n * 0.5 + 0.5);
+    nebula = mix(nebula, colorC, n2 * 0.5 + 0.5);
+    
+    // Add subtle glow
+    float glow = max(0.0, n * n2);
+    nebula += vec3(0.1, 0.1, 0.2) * glow;
+    
+    gl_FragColor = vec4(nebula + vec3(stars), 1.0);
+}
+`;
+
 // Planet Data with Translation Keys
 const PLANET_DATA = [
-    { 
-        nameKey: "solar_planet_mercury", 
+    {
+        nameKey: "solar_planet_mercury",
         type: "rocky",
-        color: 0xA0958E, 
-        size: 1.6, 
-        distance: 32, 
-        speed: 2.8, 
+        color: 0xA0958E,
+        size: 1.6,
+        distance: 32,
+        speed: 2.8,
         rotationSpeed: 0.4,
         noiseScale: 15,
         bumpScale: 0.15,
@@ -115,13 +210,13 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_temp", value: "-180°C ~ 430°C" }
         ]
     },
-    { 
-        nameKey: "solar_planet_venus",   
-        type: "atmosphere", 
-        color: 0xE6C076, 
-        size: 3.0, 
-        distance: 48, 
-        speed: 1.5, 
+    {
+        nameKey: "solar_planet_venus",
+        type: "atmosphere",
+        color: 0xE6C076,
+        size: 3.0,
+        distance: 48,
+        speed: 1.5,
         rotationSpeed: 0.2,
         atmosphereColor: 0xF5D0A2,
         atmosphereGlow: true,
@@ -133,13 +228,13 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_temp", value: "~ 465°C" }
         ]
     },
-    { 
-        nameKey: "solar_planet_earth",   
-        type: "earth", 
-        color: 0x2255AA, 
-        size: 3.2, 
-        distance: 68, 
-        speed: 1.0, 
+    {
+        nameKey: "solar_planet_earth",
+        type: "earth",
+        color: 0x2255AA,
+        size: 3.2,
+        distance: 68,
+        speed: 1.0,
         rotationSpeed: 1.0,
         atmosphereColor: 0x6699FF,
         atmosphereGlow: true,
@@ -152,18 +247,18 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_surface", valueKey: "solar_val_water" }
         ]
     },
-    { 
-        nameKey: "solar_planet_mars",    
+    {
+        nameKey: "solar_planet_mars",
         type: "rocky",
-        color: 0xD1653E, 
-        size: 1.8, 
-        distance: 88, 
-        speed: 0.53, 
+        color: 0xD1653E,
+        size: 1.8,
+        distance: 88,
+        speed: 0.53,
         rotationSpeed: 0.9,
         noiseScale: 8,
         bumpScale: 0.2,
         atmosphereColor: 0xFF9966,
-        atmosphereGlow: true, 
+        atmosphereGlow: true,
         descKey: "solar_data_desc_mars",
         facts: [
             { labelKey: "solar_fact_period", value: "687 d" },
@@ -172,14 +267,14 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_moons", value: "2" }
         ]
     },
-    { 
-        nameKey: "solar_planet_jupiter", 
+    {
+        nameKey: "solar_planet_jupiter",
         type: "gas",
-        color: 0xD9B890, 
-        size: 9.0, 
-        distance: 130, 
-        speed: 0.08, 
-        rotationSpeed: 2.4, 
+        color: 0xD9B890,
+        size: 9.0,
+        distance: 130,
+        speed: 0.08,
+        rotationSpeed: 2.4,
         bandColor1: 0xC79E76,
         bandColor2: 0x7A6052,
         descKey: "solar_data_desc_jupiter",
@@ -190,13 +285,13 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_spot", valueKey: "solar_val_yes" }
         ]
     },
-    { 
-        nameKey: "solar_planet_saturn",  
+    {
+        nameKey: "solar_planet_saturn",
         type: "gas",
-        color: 0xEBDDA9, 
-        size: 7.6, 
-        distance: 170, 
-        speed: 0.03, 
+        color: 0xEBDDA9,
+        size: 7.6,
+        distance: 170,
+        speed: 0.03,
         rotationSpeed: 2.2,
         bandColor1: 0xEBDDA9,
         bandColor2: 0xC9B589,
@@ -209,17 +304,17 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_moons", value: "80+" }
         ]
     },
-    { 
+    {
         nameKey: "solar_planet_uranus",
         type: "gas",
-        color: 0x9FE6FF, 
-        size: 5.0, 
-        distance: 215, 
-        speed: 0.01, 
+        color: 0x9FE6FF,
+        size: 5.0,
+        distance: 215,
+        speed: 0.01,
         rotationSpeed: 1.4,
         bandColor1: 0x9FE6FF,
         bandColor2: 0x7AD3FF,
-        noiseScale: 2, 
+        noiseScale: 2,
         rings: { inner: 1.4, outer: 1.6, color: 0x8899AA, opacity: 0.4 },
         descKey: "solar_data_desc_uranus",
         facts: [
@@ -229,17 +324,17 @@ const PLANET_DATA = [
             { labelKey: "solar_fact_type", valueKey: "solar_val_ice_giant" }
         ]
     },
-    { 
+    {
         nameKey: "solar_planet_neptune",
         type: "gas",
-        color: 0x3355FF, 
-        size: 4.8, 
-        distance: 255, 
-        speed: 0.006, 
+        color: 0x3355FF,
+        size: 4.8,
+        distance: 255,
+        speed: 0.006,
         rotationSpeed: 1.5,
         bandColor1: 0x3355FF,
         bandColor2: 0x2244CC,
-        noiseScale: 20, 
+        noiseScale: 20,
         descKey: "solar_data_desc_neptune",
         facts: [
             { labelKey: "solar_fact_period", value: "165 y" },
@@ -258,18 +353,18 @@ class SolarSystemApp {
         this.renderer = null;
         this.controls = null;
         this.clock = new THREE.Clock();
-        
+
         this.planets = [];
         this.orbits = [];
         this.asteroids = [];
-        
+
         this.isPlaying = true;
         this.timeScale = 1.0;
         this.selectedPlanetData = null; // Track selection for translation updates
-        
+
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-        
+
         // Uniforms for shader animation
         this.uniforms = {
             time: { value: 0 }
@@ -288,11 +383,38 @@ class SolarSystemApp {
         this.createLights();
         this.createStarfield();
         this.createSun();
+        this.createGalaxyBackground();
         this.createPlanets();
         this.createAsteroidBelt();
         this.setupEventListeners();
-        
+
+        // Intro Animation
+        this.performIntro();
+
         this.renderer.setAnimationLoop(() => this.render());
+    }
+
+    createGalaxyBackground() {
+        const geometry = new THREE.SphereGeometry(2000, 64, 64);
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                time: this.uniforms.time
+            },
+            vertexShader: GalaxyVertexShader,
+            fragmentShader: GalaxyFragmentShader,
+            side: THREE.BackSide,
+            depthWrite: false
+        });
+        const galaxy = new THREE.Mesh(geometry, material);
+        this.scene.add(galaxy);
+    }
+
+    performIntro() {
+        // Start camera far and tween in (simple lerp in render or set here)
+        this.camera.position.set(0, 800, 1200);
+        this.targetCameraPos = new THREE.Vector3(0, 120, 220);
+        this.introProgress = 0;
+        this.doingIntro = true;
     }
 
     createScene() {
@@ -366,15 +488,15 @@ class SolarSystemApp {
             const r = 1000 + Math.random() * 1000;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
-            
-            positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
-            positions[i*3+1] = r * Math.cos(phi);
-            positions[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = r * Math.cos(phi);
+            positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
 
             const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
-            colors[i*3] = color.r;
-            colors[i*3+1] = color.g;
-            colors[i*3+2] = color.b;
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
 
             sizes[i] = Math.random() * 1.5;
         }
@@ -398,13 +520,13 @@ class SolarSystemApp {
         const dustCount = 3000;
         const dustGeo = new THREE.BufferGeometry();
         const dustPos = new Float32Array(dustCount * 3);
-        for(let i=0; i<dustCount; i++) {
+        for (let i = 0; i < dustCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = 400 + Math.random() * 600;
             const spread = Math.random() * 100 * (Math.random() > 0.5 ? 1 : -1);
-            dustPos[i*3] = Math.cos(angle) * radius;
-            dustPos[i*3+1] = spread * Math.exp(-radius * 0.001);
-            dustPos[i*3+2] = Math.sin(angle) * radius;
+            dustPos[i * 3] = Math.cos(angle) * radius;
+            dustPos[i * 3 + 1] = spread * Math.exp(-radius * 0.001);
+            dustPos[i * 3 + 2] = Math.sin(angle) * radius;
         }
         dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
         const dustMat = new THREE.PointsMaterial({
@@ -552,19 +674,19 @@ class SolarSystemApp {
             const angle = Math.random() * Math.PI * 2;
             const r = THREE.MathUtils.randFloat(85, 95);
             const y = THREE.MathUtils.randFloatSpread(4);
-            
+
             dummy.position.set(
                 Math.cos(angle) * r,
                 y,
                 Math.sin(angle) * r
             );
-            dummy.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+            dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
             const s = Math.random() * 0.5 + 0.5;
             dummy.scale.set(s, s, s);
             dummy.updateMatrix();
             instancedMesh.setMatrixAt(i, dummy.matrix);
         }
-        
+
         this.scene.add(instancedMesh);
         this.asteroidBelt = instancedMesh;
     }
@@ -587,31 +709,31 @@ class SolarSystemApp {
                 const h = (height / bands) + Math.random() * 10;
                 const color1 = new THREE.Color(data.bandColor1 || data.color);
                 const color2 = new THREE.Color(data.bandColor2 || data.color);
-                
+
                 const mix = Math.random();
                 const bandColor = color1.clone().lerp(color2, mix);
-                
+
                 const noise = Math.random() * 0.1;
                 bandColor.offsetHSL(0, 0, noise - 0.05);
-                
+
                 ctx.fillStyle = bandColor.getStyle();
                 ctx.fillRect(0, y, width, h);
             }
         } else if (data.type === 'earth') {
             ctx.fillStyle = '#1144aa';
             ctx.fillRect(0, 0, width, height);
-            
+
             ctx.fillStyle = '#338844';
-            for(let i=0; i<40; i++) {
+            for (let i = 0; i < 40; i++) {
                 const x = Math.random() * width;
-                const y = Math.random() * height * 0.8 + height*0.1;
+                const y = Math.random() * height * 0.8 + height * 0.1;
                 const r = Math.random() * 80 + 20;
                 ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI*2);
+                ctx.arc(x, y, r, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            for(let i=0; i<60; i++) {
+            for (let i = 0; i < 60; i++) {
                 const x = Math.random() * width;
                 const y = Math.random() * height;
                 const w = Math.random() * 100 + 50;
@@ -622,11 +744,11 @@ class SolarSystemApp {
             const imageData = ctx.getImageData(0, 0, width, height);
             const pixels = imageData.data;
             const noiseScale = data.noiseScale || 10;
-            for(let i=0; i<pixels.length; i+=4) {
+            for (let i = 0; i < pixels.length; i += 4) {
                 const n = (Math.random() - 0.5) * noiseScale;
                 pixels[i] = Math.min(255, Math.max(0, pixels[i] + n));
-                pixels[i+1] = Math.min(255, Math.max(0, pixels[i+1] + n));
-                pixels[i+2] = Math.min(255, Math.max(0, pixels[i+2] + n));
+                pixels[i + 1] = Math.min(255, Math.max(0, pixels[i + 1] + n));
+                pixels[i + 2] = Math.min(255, Math.max(0, pixels[i + 2] + n));
             }
             ctx.putImageData(imageData, 0, 0);
         }
@@ -642,22 +764,22 @@ class SolarSystemApp {
         canvas.width = 64;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
-        
+
         const baseColor = new THREE.Color(hexColor);
-        
+
         ctx.fillStyle = 'rgba(0,0,0,0)';
-        ctx.clearRect(0,0,64,512);
-        
-        for(let y=0; y<512; y++) {
+        ctx.clearRect(0, 0, 64, 512);
+
+        for (let y = 0; y < 512; y++) {
             const intensity = 0.5 + Math.random() * 0.5;
             const gap = Math.random() > 0.95;
-            if(!gap) {
-                const col = baseColor.clone().multiplyScalar(0.8 + Math.random()*0.4);
-                ctx.fillStyle = `rgba(${col.r*255},${col.g*255},${col.b*255},${intensity})`;
+            if (!gap) {
+                const col = baseColor.clone().multiplyScalar(0.8 + Math.random() * 0.4);
+                ctx.fillStyle = `rgba(${col.r * 255},${col.g * 255},${col.b * 255},${intensity})`;
                 ctx.fillRect(0, y, 64, 1);
             }
         }
-        
+
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
@@ -670,11 +792,11 @@ class SolarSystemApp {
         canvas.width = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d');
-        const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+        const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
         gradient.addColorStop(0, options.inner || 'rgba(255,255,255,1)');
         gradient.addColorStop(1, options.outer || 'rgba(255,255,255,0)');
         ctx.fillStyle = gradient;
-        ctx.fillRect(0,0,size,size);
+        ctx.fillRect(0, 0, size, size);
         const tex = new THREE.CanvasTexture(canvas);
         tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
@@ -682,15 +804,15 @@ class SolarSystemApp {
 
     updatePlanets(delta) {
         if (!this.isPlaying) return;
-        
+
         this.planets.forEach(p => {
             p.angle += p.speed * delta * CONFIG.orbitSpeedMultiplier * this.timeScale;
             p.mesh.position.x = Math.cos(p.angle) * p.distance;
             p.mesh.position.z = Math.sin(p.angle) * p.distance;
             p.mesh.rotation.y += p.rotationSpeed * delta * 0.5;
         });
-        
-        if(this.asteroidBelt) {
+
+        if (this.asteroidBelt) {
             this.asteroidBelt.rotation.y += delta * 0.02 * CONFIG.orbitSpeedMultiplier * this.timeScale;
         }
     }
@@ -703,19 +825,19 @@ class SolarSystemApp {
         });
 
         window.addEventListener('click', (e) => {
-            if(e.target.closest('.controls') || e.target.closest('.info-panel')) return;
-            
+            if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
+
             this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            
+
             const meshes = this.planets.map(p => p.mesh);
             const intersects = this.raycaster.intersectObjects(meshes, false);
-            
-            if(intersects.length > 0) {
+
+            if (intersects.length > 0) {
                 const hit = intersects[0].object;
                 const pData = this.planets.find(p => p.mesh === hit);
-                if(pData) this.showInfo(pData.data);
+                if (pData) this.showInfo(pData.data);
             }
         });
 
@@ -731,16 +853,16 @@ class SolarSystemApp {
             this.isPlaying = !this.isPlaying;
             this.updateUI();
         });
-        
+
         document.getElementById('btn-reset').addEventListener('click', () => {
             this.controls.reset();
             this.camera.position.set(0, 120, 220);
         });
-        
+
         document.getElementById('slider-speed').addEventListener('input', (e) => {
             this.timeScale = parseFloat(e.target.value);
         });
-        
+
         document.getElementById('toggle-orbits').addEventListener('change', (e) => {
             this.orbits.forEach(o => o.visible = e.target.checked);
         });
@@ -769,13 +891,13 @@ class SolarSystemApp {
         const name = document.getElementById('info-name');
         const detail = document.getElementById('info-details');
         const facts = document.getElementById('info-facts');
-        
+
         panel.classList.remove('hidden');
-        if(desc) desc.style.display = 'none';
-        
+        if (desc) desc.style.display = 'none';
+
         name.textContent = window.i18n.get(data.nameKey);
         detail.textContent = window.i18n.get(data.descKey);
-        
+
         facts.innerHTML = '';
         data.facts.forEach(f => {
             const div = document.createElement('div');
@@ -791,11 +913,11 @@ class SolarSystemApp {
             // Hardcoded values with units (d, y, etc) should ideally be formatted, but for now keeping as is unless it's a clear key.
             // Actually, keys were used for some values in my PLANET_DATA update above.
             // e.g., valueKey: "solar_planet_mercury"
-            
+
             if (f.valueKey) {
                 value = window.i18n.get(f.valueKey);
             }
-            
+
             div.innerHTML = `<div class="fact-label">${label}</div><div class="fact-value">${value}</div>`;
             facts.appendChild(div);
         });
@@ -804,9 +926,24 @@ class SolarSystemApp {
     render() {
         const delta = this.clock.getDelta();
         this.uniforms.time.value += delta;
-        
+
+        // Intro Animation
+        if (this.doingIntro) {
+            this.introProgress += delta * 0.5; // 2 seconds intro
+            if (this.introProgress >= 1.0) {
+                this.introProgress = 1.0;
+                this.doingIntro = false;
+            }
+            // Ease out cubic
+            const t = 1 - Math.pow(1 - this.introProgress, 3);
+            this.camera.position.lerpVectors(new THREE.Vector3(0, 800, 1200), this.targetCameraPos, t);
+            this.camera.lookAt(0, 0, 0);
+        } else {
+            this.controls.update();
+        }
+
         this.updatePlanets(delta);
-        this.controls.update();
+
         this.renderer.render(this.scene, this.camera);
     }
 }
