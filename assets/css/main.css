@@ -700,14 +700,16 @@ footer {
 
     /* Change Scroll Indicator to flow naturally on mobile */
     .scroll-indicator {
-        position: relative;
-        bottom: auto;
-        left: auto;
-        transform: none;
-        margin-top: 1rem;
-        margin-bottom: 2rem;
-        padding-bottom: 20px;
-        /* Extra padding */
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        transform: none !important;
+        margin-top: 40px;
+        margin-bottom: 60px;
+        padding-bottom: 0;
+        z-index: 10;
+        width: 100%;
+        /* Ensure it takes full width to center */
     }
 }
 
