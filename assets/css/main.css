@@ -680,7 +680,34 @@ footer {
     }
 
     h1 {
-        font-size: clamp(2.5rem, 8vw, 3.5rem);
+        font-size: clamp(2rem, 8vw, 3rem);
+        /* Slightly smaller for mobile safety */
+    }
+
+    .hero p {
+        margin-top: 1rem;
+        font-size: 1rem;
+    }
+
+    .hero-cta-group {
+        margin-top: 2rem;
+        /* Reduce gap */
+        flex-direction: column;
+        width: 100%;
+        margin-bottom: 2rem;
+        /* Add space for scroll indicator flow */
+    }
+
+    /* Change Scroll Indicator to flow naturally on mobile */
+    .scroll-indicator {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        transform: none;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+        padding-bottom: 20px;
+        /* Extra padding */
     }
 }
 
