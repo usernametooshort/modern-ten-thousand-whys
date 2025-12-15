@@ -381,9 +381,10 @@ class SolarSystemApp {
         this.createRenderer();
         this.createControls();
         this.createLights();
-        this.createStarfield();
+        // this.createStarfield(); // Disable simple starfield, use galaxy + bg stars
+        this.createBgStars(); // Distant background stars
         this.createSun();
-        this.createGalaxyBackground();
+        this.createSpiralGalaxy();
         this.createPlanets();
         this.createAsteroidBelt();
         this.setupEventListeners();
@@ -394,19 +395,58 @@ class SolarSystemApp {
         this.renderer.setAnimationLoop(() => this.render());
     }
 
-    createGalaxyBackground() {
-        const geometry = new THREE.SphereGeometry(2000, 64, 64);
-        const material = new THREE.ShaderMaterial({
-            uniforms: {
-                time: this.uniforms.time
-            },
-            vertexShader: GalaxyVertexShader,
-            fragmentShader: GalaxyFragmentShader,
-            side: THREE.BackSide,
-            depthWrite: false
+    createSpiralGalaxy() {
+        const count = 15000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+
+        const colorInside = new THREE.Color(0xff6030);
+        const colorOutside = new THREE.Color(0x1b3984);
+
+        for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+            const radius = Math.random() * 800 + 400; // 400 to 1200 distance
+            const spinAngle = radius * 0.005;
+            const branchAngle = (i % 3) * ((Math.PI * 2) / 3); // 3 arms
+
+            const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+            const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+            const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 100;
+
+            positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+            positions[i3 + 1] = randomY * (radius / 1200) * 1.5; // Flattened but some height
+            positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+            // Color mixed by radius
+            const mixedColor = colorInside.clone();
+            mixedColor.lerp(colorOutside, radius / 1200);
+
+            colors[i3] = mixedColor.r;
+            colors[i3 + 1] = mixedColor.g;
+            colors[i3 + 2] = mixedColor.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 2,
+            sizeAttenuation: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            vertexColors: true,
+            map: this.createGlowTexture({ size: 32, inner: 'rgba(255,255,255,0.8)', outer: 'rgba(0,0,0,0)' }),
+            transparent: true,
+            opacity: 0.8
         });
-        const galaxy = new THREE.Mesh(geometry, material);
+
+        const galaxy = new THREE.Points(geometry, material);
+        // Tilt it a bit
+        galaxy.rotation.x = Math.PI / 6;
+        galaxy.rotation.z = Math.PI / 8;
         this.scene.add(galaxy);
+        this.galaxyMesh = galaxy;
     }
 
     performIntro() {
@@ -556,16 +596,33 @@ class SolarSystemApp {
         const sun = new THREE.Mesh(geometry, material);
         this.scene.add(sun);
 
+        // Multiple Glow Layers for Blinding Realism
+        // Inner intense white/yellow
         const glowMat = new THREE.SpriteMaterial({
-            map: this.createGlowTexture({ size: 256, inner: 'rgba(255,200,100,0.8)', outer: 'rgba(255,100,0,0)' }),
-            color: 0xffaa00,
+            map: this.createGlowTexture({ size: 512, inner: 'rgba(255,255,220,1)', outer: 'rgba(255,200,0,0)' }),
+            color: 0xffffff,
             transparent: true,
-            opacity: 0.4,
+            opacity: 0.8,
             blending: THREE.AdditiveBlending
         });
         const glow = new THREE.Sprite(glowMat);
-        glow.scale.set(45, 45, 1);
+        glow.scale.set(30, 30, 1);
         sun.add(glow);
+
+        // Outer Coronal Haze
+        const coronaMat = new THREE.SpriteMaterial({
+            map: this.createGlowTexture({ size: 512, inner: 'rgba(255,100,0,0.4)', outer: 'rgba(100,0,0,0)' }),
+            color: 0xff5500,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending
+        });
+        const corona = new THREE.Sprite(coronaMat);
+        corona.scale.set(60, 60, 1);
+        sun.add(corona);
+
+        // God-ray lines (static billboard lines for flare effect)
+        // ... (Skipping for now to keep performance high)
 
         const coreMat = new THREE.SpriteMaterial({
             map: this.createGlowTexture({ size: 128 }),
@@ -692,70 +749,161 @@ class SolarSystemApp {
     }
 
     generatePlanetTexture(data) {
-        const width = 1024;
-        const height = 512;
+        // High-res texture for realism
+        const width = 2048;
+        const height = 1024;
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = new THREE.Color(data.color).getStyle();
+        // Helper for noise-based patterns
+        // Since we don't have a simplex noise lib loaded in global scope easily, 
+        // we'll simulate "Noise" using many small random circles/rects (Impressionist approach)
+        // OR better: Simple Perlin-like using math (expensive in JS loop but run once).
+        // Let's stick to the "Many Operations" approach which is faster to code without libs.
+
+        const base = new THREE.Color(data.color);
+        ctx.fillStyle = base.getStyle();
         ctx.fillRect(0, 0, width, height);
 
         if (data.type === 'gas') {
-            const bands = 20;
-            for (let i = 0; i < bands; i++) {
-                const y = (i / bands) * height;
-                const h = (height / bands) + Math.random() * 10;
-                const color1 = new THREE.Color(data.bandColor1 || data.color);
-                const color2 = new THREE.Color(data.bandColor2 || data.color);
+            // Gas Giant: Bands + Turbulence
+            const palette = [
+                new THREE.Color(data.bandColor1 || data.color),
+                new THREE.Color(data.bandColor2 || data.color),
+                new THREE.Color(data.color).multiplyScalar(0.8),
+                new THREE.Color(data.color).multiplyScalar(1.2)
+            ];
 
-                const mix = Math.random();
-                const bandColor = color1.clone().lerp(color2, mix);
+            // Draw bands
+            for (let y = 0; y < height; y++) {
+                // Main band structure
+                const yn = y / height;
+                const freq = data.nameKey.includes('jupiter') ? 20 : 50;
+                const phase = Math.sin(yn * freq + Math.random() * 0.2);
 
-                const noise = Math.random() * 0.1;
-                bandColor.offsetHSL(0, 0, noise - 0.05);
+                // Turbulence
+                const turb = Math.sin(yn * 100) * 0.05 + Math.random() * 0.1;
 
-                ctx.fillStyle = bandColor.getStyle();
-                ctx.fillRect(0, y, width, h);
+                // Color selection based on sine wave
+                let idx = Math.floor((phase + turb + 1) * 0.5 * palette.length);
+                idx = Math.max(0, Math.min(palette.length - 1, idx));
+
+                const col = palette[idx].clone();
+                // Add noise
+                col.offsetHSL(0, 0, (Math.random() - 0.5) * 0.1);
+
+                ctx.fillStyle = col.getStyle();
+                ctx.fillRect(0, y, width, 2); // 2px height strips
             }
+
+            // Smudge/blur effect using semi-transparent rects
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const w = Math.random() * 100 + 50;
+                const h = Math.random() * 10 + 2;
+                ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+                ctx.fillRect(x, y, w, h);
+            }
+            // Storms (Red Spot etc)
+            if (data.nameKey.includes('jupiter')) {
+                // Great Red Spot
+                ctx.beginPath();
+                ctx.ellipse(width * 0.7, height * 0.6, 120, 60, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(180, 50, 20, 0.4)';
+                ctx.filter = 'blur(20px)'; // Browser canvas filter
+                ctx.fill();
+                ctx.filter = 'none';
+            }
+
         } else if (data.type === 'earth') {
-            ctx.fillStyle = '#1144aa';
+            // Earth-like: Ocean + Continents + Clouds
+            // 1. Ocean (Deep Blue Gradient)
+            const grd = ctx.createLinearGradient(0, 0, 0, height);
+            grd.addColorStop(0, '#0a2a5a');
+            grd.addColorStop(0.5, '#1a4a8a');
+            grd.addColorStop(1, '#0a2a5a');
+            ctx.fillStyle = grd;
             ctx.fillRect(0, 0, width, height);
 
-            ctx.fillStyle = '#338844';
-            for (let i = 0; i < 40; i++) {
+            // 2. Continents (Green/Brown)
+            // Use heavy random plotting to form "Clumps"
+            ctx.fillStyle = '#2a5a3a';
+            for (let i = 0; i < 60; i++) {
+                // Continent center
+                const cx = Math.random() * width;
+                const cy = Math.random() * height * 0.6 + height * 0.2; // Keep away from poles
+                const size = Math.random() * 200 + 100;
+
+                // Draw blobs around center
+                for (let k = 0; k < 50; k++) {
+                    const bx = cx + (Math.random() - 0.5) * size * 2;
+                    const by = cy + (Math.random() - 0.5) * size;
+                    const br = Math.random() * 30 + 10;
+                    ctx.beginPath();
+                    ctx.arc(bx, by, br, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            // 3. Poles (White)
+            ctx.fillStyle = '#eeeeff';
+            ctx.fillRect(0, 0, width, 60);
+            ctx.fillRect(0, height - 60, width, 60);
+
+            // 4. Clouds (White Noise Swirls)
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            for (let i = 0; i < 2000; i++) {
                 const x = Math.random() * width;
-                const y = Math.random() * height * 0.8 + height * 0.1;
-                const r = Math.random() * 80 + 20;
+                const y = Math.random() * height;
+                const w = Math.random() * 80 + 20;
+                const h = Math.random() * 20 + 5;
+                ctx.fillRect(x, y, w, h);
+            }
+
+        } else {
+            // Rocky (Mars/Mercury)
+            // Cratered/Dusty look
+            const baseC = new THREE.Color(data.color);
+            ctx.fillStyle = baseC.getStyle();
+            ctx.fillRect(0, 0, width, height);
+
+            // Noise Texturing
+            for (let i = 0; i < 20000; i++) {
+                const x = Math.floor(Math.random() * width);
+                const y = Math.floor(Math.random() * height);
+                const shade = (Math.random() - 0.5) * 0.1;
+                const c = baseC.clone().offsetHSL(0, 0, shade);
+                ctx.fillStyle = c.getStyle();
+                ctx.fillRect(x, y, 4, 2);
+            }
+
+            // Craters
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const r = Math.random() * 20 + 5;
+
+                const grad = ctx.createRadialGradient(x, y, r * 0.8, x, y, r);
+                grad.addColorStop(0, 'rgba(0,0,0,0)');
+                grad.addColorStop(0.9, 'rgba(0,0,0,0.3)');
+                grad.addColorStop(1, 'rgba(255,255,255,0.1)');
+                ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(x, y, r, 0, Math.PI * 2);
                 ctx.fill();
             }
-            ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            for (let i = 0; i < 60; i++) {
-                const x = Math.random() * width;
-                const y = Math.random() * height;
-                const w = Math.random() * 100 + 50;
-                const h = Math.random() * 30 + 10;
-                ctx.fillRect(x, y, w, h);
-            }
-        } else {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const pixels = imageData.data;
-            const noiseScale = data.noiseScale || 10;
-            for (let i = 0; i < pixels.length; i += 4) {
-                const n = (Math.random() - 0.5) * noiseScale;
-                pixels[i] = Math.min(255, Math.max(0, pixels[i] + n));
-                pixels[i + 1] = Math.min(255, Math.max(0, pixels[i + 1] + n));
-                pixels[i + 2] = Math.min(255, Math.max(0, pixels[i + 2] + n));
-            }
-            ctx.putImageData(imageData, 0, 0);
         }
 
         const map = new THREE.CanvasTexture(canvas);
         map.colorSpace = THREE.SRGBColorSpace;
-        return { map: map, bump: map };
+
+        // Use same texture for bump but maybe inverted for gas?
+        // Actually Gas giants don't have bump maps.
+        const bump = (data.type === 'gas') ? null : map;
+
+        return { map: map, bump: bump };
     }
 
     generateRingTexture(hexColor) {
@@ -923,9 +1071,43 @@ class SolarSystemApp {
         });
     }
 
+    createBgStars() {
+        // Thousands of tiny stars far away
+        const count = 5000;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        const size = new Float32Array(count);
+        for (let i = 0; i < count * 3; i += 3) {
+            const r = 2000 + Math.random() * 2000;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
+            pos[i] = r * Math.sin(phi) * Math.cos(theta);
+            pos[i + 1] = r * Math.cos(phi);
+            pos[i + 2] = r * Math.sin(phi) * Math.sin(theta);
+            size[i / 3] = Math.random() * 2.0;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('size', new THREE.BufferAttribute(size, 1));
+        const mat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 1.5,
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.8,
+            map: this.createGlowTexture({ size: 32 }),
+            depthWrite: false
+        });
+        this.scene.add(new THREE.Points(geo, mat));
+    }
+
     render() {
         const delta = this.clock.getDelta();
         this.uniforms.time.value += delta;
+
+        // Galaxy Rotation
+        if (this.galaxyMesh) {
+            this.galaxyMesh.rotation.y += delta * 0.02;
+        }
 
         // Intro Animation
         if (this.doingIntro) {
