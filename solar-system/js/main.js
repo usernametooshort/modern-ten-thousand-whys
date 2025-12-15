@@ -977,13 +977,16 @@ class SolarSystemApp {
 
     createSun() {
         const geometry = new THREE.SphereGeometry(10, 64, 64);
-        const material = new THREE.ShaderMaterial({
-            uniforms: {
-                time: this.uniforms.time,
-            },
-            vertexShader: SunVertexShader,
-            fragmentShader: SunFragmentShader,
-            side: THREE.DoubleSide
+
+        // NANO BANANA PRO: Use AI-generated photorealistic Sun texture
+        const textureLoader = new THREE.TextureLoader();
+        const sunMap = textureLoader.load('./textures/sun.png');
+        sunMap.colorSpace = THREE.SRGBColorSpace;
+
+        const material = new THREE.MeshBasicMaterial({
+            map: sunMap,
+            emissive: 0xff6600,
+            emissiveIntensity: 1.0
         });
         const sun = new THREE.Mesh(geometry, material);
         this.scene.add(sun);
@@ -1199,59 +1202,38 @@ void main() {
             let material;
 
 
-            // --- PROCEDURAL SHADER SELECTION ---
-            if (data.type === 'earth') {
-                // NANO BANANA PRO: Use AI-generated photorealistic texture
-                const textureLoader = new THREE.TextureLoader();
-                const earthDayMap = textureLoader.load('./textures/earth_day.png');
-                earthDayMap.colorSpace = THREE.SRGBColorSpace;
+
+            // --- NANO BANANA PRO: AI-Generated Texture Materials ---
+            const textureLoader = new THREE.TextureLoader();
+
+            // Map nameKey to texture filename
+            const textureMap = {
+                'solar_planet_mercury': 'mercury.png',
+                'solar_planet_venus': 'venus.png',
+                'solar_planet_earth': 'earth_day.png',
+                'solar_planet_mars': 'mars.png',
+                'solar_planet_jupiter': 'jupiter.png',
+                'solar_planet_saturn': 'saturn.png',
+                'solar_planet_uranus': 'uranus.png',
+                'solar_planet_neptune': 'neptune.png'
+            };
+
+            const texturePath = textureMap[data.nameKey];
+            if (texturePath) {
+                const planetMap = textureLoader.load('./textures/' + texturePath);
+                planetMap.colorSpace = THREE.SRGBColorSpace;
 
                 material = new THREE.MeshStandardMaterial({
-                    map: earthDayMap,
-                    roughness: 0.6,
+                    map: planetMap,
+                    roughness: data.type === 'gas' ? 0.9 : 0.7,
                     metalness: 0.0
                 });
-            } else if (data.type === 'gas') {
-                // Jupiter, Saturn, Uranus, Neptune
-                material = new THREE.ShaderMaterial({
-                    vertexShader: PlanetVertexShader,
-                    fragmentShader: GasPlanetFragmentShader,
-                    uniforms: {
-                        time: this.uniforms.time,
-                        baseColor: { value: new THREE.Color(data.color) },
-                        bandColor1: { value: new THREE.Color(data.bandColor1 || data.color) },
-                        bandColor2: { value: new THREE.Color(data.bandColor2 || 0x000000) },
-                        scale: { value: data.noiseScale || 3.0 },
-                        distortion: { value: 0.5 }
-                    }
-                });
-            } else if (data.nameKey === 'solar_planet_venus') {
-                // Venus is special: Rocky but looks like Gas (Thick Atmosphere)
-                material = new THREE.ShaderMaterial({
-                    vertexShader: PlanetVertexShader,
-                    fragmentShader: GasPlanetFragmentShader,
-                    uniforms: {
-                        time: this.uniforms.time,
-                        baseColor: { value: new THREE.Color(0xFFC649) }, // Yellowish
-                        bandColor1: { value: new THREE.Color(0xE6A13B) },
-                        bandColor2: { value: new THREE.Color(0xD9891E) },
-                        scale: { value: 5.0 }, // Dense clouds
-                        distortion: { value: 0.2 } // Flowing clouds
-                    }
-                });
             } else {
-                // Rocky (Mercury, Mars)
-                const isMars = data.nameKey === 'solar_planet_mars';
-                material = new THREE.ShaderMaterial({
-                    vertexShader: PlanetVertexShader,
-                    fragmentShader: RockyPlanetFragmentShader,
-                    uniforms: {
-                        time: this.uniforms.time,
-                        baseColor: { value: new THREE.Color(data.color) },
-                        scale: { value: isMars ? 3.0 : 5.0 },
-                        hasWater: { value: 0.0 },
-                        hasIceCaps: { value: isMars ? 1.0 : 0.0 }
-                    }
+                // Fallback for any unknown planets
+                material = new THREE.MeshStandardMaterial({
+                    color: data.color,
+                    roughness: 0.7,
+                    metalness: 0.1
                 });
             }
 
@@ -1322,7 +1304,20 @@ void main() {
 
             if (data.rings) {
                 const ringGeo = new THREE.RingGeometry(data.size * data.rings.inner, data.size * data.rings.outer, 128);
-                const ringTex = this.generateRingTexture(data.rings.color);
+
+                // Use AI-generated ring texture for Saturn
+                const ringLoader = new THREE.TextureLoader();
+                const ringTex = ringLoader.load('./textures/saturn_rings.png');
+                ringTex.colorSpace = THREE.SRGBColorSpace;
+
+                // Fix UV mapping for ring geometry
+                const pos = ringGeo.attributes.position;
+                const v3 = new THREE.Vector3();
+                for (let i = 0; i < pos.count; i++) {
+                    v3.fromBufferAttribute(pos, i);
+                    ringGeo.attributes.uv.setXY(i, v3.length() < (data.size * (data.rings.inner + data.rings.outer) / 2) ? 0 : 1, 1);
+                }
+
                 const ringMat = new THREE.MeshStandardMaterial({
                     map: ringTex,
                     color: 0xffffff,
