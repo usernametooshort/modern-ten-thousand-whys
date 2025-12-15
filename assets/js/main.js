@@ -15,11 +15,13 @@ const renderer = new THREE.WebGLRenderer({
     antialias: true
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
 
 // --- Particles ---
 const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 2000;
+// Optimize for mobile: fewer particles
+const isMobile = window.innerWidth < 768;
+const particlesCount = isMobile ? 800 : 2000;
 const posArray = new Float32Array(particlesCount * 3);
 
 for (let i = 0; i < particlesCount * 3; i++) {
@@ -43,7 +45,7 @@ scene.add(particlesMesh);
 
 // Secondary particles (Stars far away)
 const starsGeometry = new THREE.BufferGeometry();
-const starsCount = 3000;
+const starsCount = isMobile ? 1000 : 3000;
 const starsPosArray = new Float32Array(starsCount * 3);
 
 for (let i = 0; i < starsCount * 3; i++) {
@@ -120,7 +122,8 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const isMobileResize = window.innerWidth < 768;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileResize ? 1.5 : 2));
 });
 
 

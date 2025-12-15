@@ -6,7 +6,7 @@
     --accent-cyan: #00f3ff;
     --accent-magenta: #bc13fe;
     --accent-gold: #ffd700;
-    
+
     --text-primary: #ffffff;
     --text-secondary: rgba(255, 255, 255, 0.7);
     --text-muted: rgba(255, 255, 255, 0.4);
@@ -21,14 +21,17 @@
     /* Layout */
     --container-width: 1200px;
     --header-height: 80px;
-    
+
     /* Font */
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Outfit', var(--font-sans); /* Assuming we might import this or fallback */
+    --font-heading: 'Outfit', var(--font-sans);
+    /* Assuming we might import this or fallback */
 }
 
 /* Reset & Base */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
 }
 
@@ -58,7 +61,12 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: var(--font-heading);
     margin: 0;
     line-height: 1.2;
@@ -118,8 +126,15 @@ a {
 
 /* Animations */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .animate-entry {
@@ -208,7 +223,8 @@ a {
     transition: all 0.3s;
 }
 
-.lang-btn:hover, .lang-btn.active {
+.lang-btn:hover,
+.lang-btn.active {
     background: var(--glass-bg);
     border-color: var(--accent-cyan);
     color: var(--accent-cyan);
@@ -289,7 +305,7 @@ a {
 /* Scroll Indicator */
 .scroll-indicator {
     position: absolute;
-    bottom: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -299,6 +315,7 @@ a {
     font-size: 0.8rem;
     color: var(--text-muted);
     animation: bounce 2s infinite;
+    z-index: 10;
 }
 
 .mouse-icon {
@@ -321,9 +338,22 @@ a {
 }
 
 @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
-    40% { transform: translateY(-10px) translateX(-50%); }
-    60% { transform: translateY(-5px) translateX(-50%); }
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0) translateX(-50%);
+    }
+
+    40% {
+        transform: translateY(-10px) translateX(-50%);
+    }
+
+    60% {
+        transform: translateY(-5px) translateX(-50%);
+    }
 }
 
 /* Catalog Layout */
@@ -359,6 +389,7 @@ a {
 .catalog-nav::-webkit-scrollbar {
     width: 4px;
 }
+
 .catalog-nav::-webkit-scrollbar-thumb {
     background: var(--glass-border);
     border-radius: 4px;
@@ -386,7 +417,7 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     transition: color 0.3s;
 }
 
@@ -418,7 +449,8 @@ a {
 }
 
 .chapter-nav a {
-    color: var(--text-secondary); /* Override global 'a' color */
+    color: var(--text-secondary);
+    /* Override global 'a' color */
     font-size: 0.9rem;
     display: flex;
     align-items: center;
@@ -518,7 +550,7 @@ a {
 
 .version {
     font-size: 0.75rem;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     padding: 2px 6px;
     border-radius: 4px;
     vertical-align: middle;
@@ -529,7 +561,8 @@ a {
 .experience-meta {
     list-style: none;
     padding: 0;
-    margin: auto 0 20px 0; /* Push to bottom */
+    margin: auto 0 20px 0;
+    /* Push to bottom */
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
@@ -599,7 +632,7 @@ footer {
     border-top: 1px solid var(--glass-border);
     padding: 60px 0;
     text-align: center;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     position: relative;
     z-index: 10;
 }
@@ -637,7 +670,7 @@ footer {
     .catalog-layout {
         grid-template-columns: 1fr;
     }
-    
+
     .catalog-nav {
         position: relative;
         top: 0;
@@ -647,7 +680,7 @@ footer {
     }
 
     h1 {
-        font-size: 3rem;
+        font-size: clamp(2.5rem, 8vw, 3.5rem);
     }
 }
 
@@ -655,12 +688,45 @@ footer {
     .site-header {
         padding: 0 20px;
     }
-    
+
+    .hero {
+        min-height: 100vh;
+        /* Fallback */
+        min-height: 100dvh;
+        padding-top: 60px;
+    }
+
     .hero-content {
         padding: 0 20px;
     }
 
     .hero-cta-group {
         flex-direction: column;
+        width: 100%;
+    }
+
+    .cta-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Fix Grid Overflow on small screens (iPhone SE 320px) */
+    .catalog-experiences {
+        grid-template-columns: 1fr;
+        /* Stack vertically on small mobile */
+        gap: 20px;
+    }
+
+    .container {
+        padding: 0 16px;
+    }
+
+    .catalog-experience {
+        padding: 20px;
+    }
+
+    /* Raise scroll indicator on mobile to clear standard bottom bars */
+    .scroll-indicator {
+        bottom: calc(80px + env(safe-area-inset-bottom));
     }
 }
