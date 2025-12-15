@@ -793,10 +793,9 @@ createAsteroidBelt() {
 
 generatePlanetTexture(data) {
     // High-res texture for realism
+    // High-res texture for realism
     const width = 2048;
     const height = 1024;
-    const width = 1024; // Keep affordable res
-    const height = 512;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
