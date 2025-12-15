@@ -776,7 +776,7 @@ class SolarSystemApp {
         // this.createStarfield(); // Disable simple starfield, use galaxy + bg stars
         this.createBgStars(); // Distant background stars
         this.createSun();
-        this.createSpiralGalaxy();
+        // this.createSpiralGalaxy(); // Now using scene.background instead
         this.createPlanets();
         this.createAsteroidBelt();
         this.setupEventListeners();
@@ -817,8 +817,15 @@ class SolarSystemApp {
 
     createScene() {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(CONFIG.bgColor);
-        this.scene.fog = new THREE.FogExp2(0x020205, 0.0015);
+
+        // Load galaxy skybox as scene background
+        const textureLoader = new THREE.TextureLoader();
+        const galaxyTexture = textureLoader.load('./textures/galaxy_skybox.png');
+        galaxyTexture.colorSpace = THREE.SRGBColorSpace;
+        this.scene.background = galaxyTexture;
+
+        // Disable fog so it doesn't affect the background
+        // this.scene.fog = new THREE.FogExp2(0x020205, 0.0015);
     }
 
     createCamera() {
