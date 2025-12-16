@@ -168,6 +168,139 @@ void main() {
 }
 `;
 
+// --- NANO BANANA PRO: Accretion Disk Shader ---
+const AccretionDiskVertexShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main() {
+    vUv = uv;
+    vPosition = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const AccretionDiskFragmentShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+uniform float time;
+uniform vec3 innerColor;
+uniform vec3 outerColor;
+uniform float opacity;
+
+// Simplex-style noise
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+        mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
+        f.y
+    );
+}
+
+float fbm(vec2 p) {
+    float f = 0.0;
+    f += 0.5 * noise(p); p *= 2.01;
+    f += 0.25 * noise(p); p *= 2.02;
+    f += 0.125 * noise(p); p *= 2.03;
+    f += 0.0625 * noise(p);
+    return f;
+}
+
+void main() {
+    // Convert to polar coordinates for swirl
+    vec2 center = vec2(0.5, 0.5);
+    vec2 toCenter = vUv - center;
+    float dist = length(toCenter) * 2.0;
+    float angle = atan(toCenter.y, toCenter.x);
+    
+    // Swirl animation - matter spiraling inward
+    float swirl = angle + dist * 3.0 - time * 2.0;
+    
+    // Create spiral arm pattern
+    float arms = 0.5 + 0.5 * sin(swirl * 4.0);
+    
+    // Add turbulence
+    float turb = fbm(vec2(angle * 3.0 + time * 0.5, dist * 5.0));
+    
+    // Hot spots near center
+    float heat = 1.0 - smoothstep(0.0, 0.6, dist);
+    
+    // Combine for final pattern
+    float pattern = arms * 0.6 + turb * 0.4;
+    pattern *= smoothstep(0.0, 0.15, dist); // Fade at center (hole)
+    pattern *= smoothstep(1.0, 0.7, dist);  // Fade at edge
+    
+    // Color gradient from hot inner to cooler outer
+    vec3 color = mix(innerColor, outerColor, dist);
+    color = mix(color, vec3(1.0, 0.95, 0.8), heat * 0.5); // White-hot center
+    
+    // Add bright spots
+    float hotspots = pow(turb, 3.0) * heat;
+    color += vec3(1.0, 0.8, 0.5) * hotspots * 2.0;
+    
+    float alpha = pattern * opacity;
+    gl_FragColor = vec4(color * (0.8 + pattern * 0.4), alpha);
+}
+`;
+
+// --- NANO BANANA PRO: Volumetric Jet Shader ---
+const JetVertexShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main() {
+    vUv = uv;
+    vPosition = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+const JetFragmentShader = `
+varying vec2 vUv;
+varying vec3 vPosition;
+uniform float time;
+uniform vec3 jetColor;
+uniform float opacity;
+uniform float pulsarMode;
+
+float hash(float n) { return fract(sin(n) * 43758.5453123); }
+
+void main() {
+    // Beam core (bright center)
+    float centerDist = abs(vUv.x - 0.5) * 2.0;
+    float core = pow(1.0 - centerDist, 3.0);
+    
+    // Energy flow (moving up the jet)
+    float flow = fract(vUv.y * 3.0 - time * 3.0);
+    float energyBands = pow(flow, 2.0) * 0.5;
+    
+    // Flicker effect for pulsar
+    float flicker = 1.0;
+    if (pulsarMode > 0.5) {
+        flicker = 0.7 + 0.3 * sin(time * 30.0);
+    }
+    
+    // Fade at top
+    float fadeTop = 1.0 - smoothstep(0.7, 1.0, vUv.y);
+    float fadeBottom = smoothstep(0.0, 0.1, vUv.y);
+    
+    // Combine
+    float intensity = (core + energyBands * 0.5) * fadeTop * fadeBottom * flicker;
+    
+    // Color with hot core
+    vec3 color = jetColor;
+    color = mix(color, vec3(1.0), core * 0.5); // White-hot core
+    
+    float alpha = intensity * opacity;
+    gl_FragColor = vec4(color * intensity * 2.0, alpha);
+}
+`;
+
 
 // --- Configuration with I18n Keys ---
 
@@ -482,36 +615,48 @@ class StarLifecycleApp {
         this.nebula = new THREE.Points(pGeo, pMat);
         this.scene.add(this.nebula);
 
-        // Disk
-        const diskGeo = new THREE.RingGeometry(3, 15, 128);
-        const diskMat = new THREE.MeshBasicMaterial({
-            color: 0xffaa66,
-            side: THREE.DoubleSide,
+        // NANO BANANA PRO: Shader-based Accretion Disk
+        this.diskUniforms = {
+            time: { value: 0 },
+            innerColor: { value: new THREE.Color(0xffdd88) },
+            outerColor: { value: new THREE.Color(0xff6622) },
+            opacity: { value: 0.0 }
+        };
+        const diskGeo = new THREE.PlaneGeometry(30, 30, 64, 64);
+        const diskMat = new THREE.ShaderMaterial({
+            uniforms: this.diskUniforms,
+            vertexShader: AccretionDiskVertexShader,
+            fragmentShader: AccretionDiskFragmentShader,
             transparent: true,
-            opacity: 0.0,
+            side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
-            map: this.createRingTexture()
+            depthWrite: false
         });
         this.disk = new THREE.Mesh(diskGeo, diskMat);
         this.disk.rotation.x = -Math.PI / 2;
         this.scene.add(this.disk);
 
-        // Jets
+        // NANO BANANA PRO: Shader-based Volumetric Jets
+        this.jetUniforms = {
+            time: { value: 0 },
+            jetColor: { value: new THREE.Color(0x88ccff) },
+            opacity: { value: 0.0 },
+            pulsarMode: { value: 0.0 }
+        };
         this.jets = new THREE.Group();
-        const beamTexture = this.createBeamTexture();
-        const beamGeo = new THREE.PlaneGeometry(2, 30);
-        beamGeo.translate(0, 15, 0);
-        const beamMat = new THREE.MeshBasicMaterial({
-            color: 0xaaccff,
-            map: beamTexture,
+        const jetGeo = new THREE.PlaneGeometry(4, 40);
+        jetGeo.translate(0, 20, 0);
+        const jetMat = new THREE.ShaderMaterial({
+            uniforms: this.jetUniforms,
+            vertexShader: JetVertexShader,
+            fragmentShader: JetFragmentShader,
             transparent: true,
-            opacity: 0.0,
+            side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide
+            depthWrite: false
         });
-        const jet1 = new THREE.Mesh(beamGeo, beamMat);
-        const jet2 = new THREE.Mesh(beamGeo, beamMat);
+        const jet1 = new THREE.Mesh(jetGeo, jetMat);
+        const jet2 = new THREE.Mesh(jetGeo, jetMat.clone());
         jet2.rotation.y = Math.PI / 2;
         const topJet = new THREE.Group();
         topJet.add(jet1, jet2);
@@ -807,19 +952,21 @@ class StarLifecycleApp {
             this.nebula.scale.setScalar(ns);
         }
 
+        // NANO BANANA PRO: Shader-animated disk
         this.disk.visible = this.state.diskOp > 0.01;
         if (this.disk.visible) {
-            this.disk.material.opacity = this.state.diskOp * 0.8;
-            this.disk.rotation.z += delta * 0.8;
+            this.diskUniforms.time.value += delta;
+            this.diskUniforms.opacity.value = this.state.diskOp;
+            // Disk rotates in shader, no need for mesh rotation
         }
 
+        // NANO BANANA PRO: Shader-animated jets
         this.jets.visible = this.state.jetOp > 0.01;
         if (this.jets.visible) {
-            const op = this.state.jetOp * (0.6 + Math.random() * 0.4);
-            this.jets.children.forEach(group => {
-                group.children.forEach(mesh => mesh.material.opacity = op);
-            });
-            const s = 1 + Math.random() * 0.1;
+            this.jetUniforms.time.value += delta;
+            this.jetUniforms.opacity.value = this.state.jetOp;
+            this.jetUniforms.pulsarMode.value = this.targetState.pulsar ? 1.0 : 0.0;
+            const s = 1 + Math.sin(this.clock.elapsedTime * 3) * 0.05;
             this.jets.scale.set(1, s, 1);
         }
 
