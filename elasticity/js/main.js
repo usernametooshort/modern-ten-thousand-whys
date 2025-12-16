@@ -77,8 +77,6 @@ class ElasticRodApp {
         this.addLights();
         this.addRod();
         this.addClamp();
-        this.addSpringVisualization();
-        this.addDamperVisualization();
         this.addStressColorBar();
         this.initCharts();
         this.bindUI();
@@ -275,70 +273,6 @@ class ElasticRodApp {
         const clamp = new THREE.Mesh(geometry, material);
         clamp.position.set(this.fixedX - 0.6, 0, 0);
         this.scene.add(clamp);
-
-        // Add spring symbol on clamp
-        this.addFormulaLabel('k', new THREE.Vector3(this.fixedX - 1.5, 1.5, 0));
-    }
-
-    addSpringVisualization() {
-        // Helical spring visual beside the rod
-        const springGroup = new THREE.Group();
-        this.springCoils = [];
-
-        const coilCount = 12;
-        const coilRadius = 0.3;
-        const coilHeight = 4;
-
-        const springMat = new THREE.MeshStandardMaterial({
-            color: 0x66ff66,
-            metalness: 0.5,
-            roughness: 0.4
-        });
-
-        for (let i = 0; i < coilCount; i++) {
-            const torusGeo = new THREE.TorusGeometry(coilRadius, 0.03, 8, 24);
-            const coil = new THREE.Mesh(torusGeo, springMat);
-            coil.rotation.x = Math.PI / 2;
-            coil.position.y = -coilHeight / 2 + (i / coilCount) * coilHeight;
-            springGroup.add(coil);
-            this.springCoils.push(coil);
-        }
-
-        springGroup.position.set(this.fixedX - 2, 0, 0);
-        springGroup.rotation.z = Math.PI / 2;
-        this.scene.add(springGroup);
-        this.springGroup = springGroup;
-    }
-
-    addDamperVisualization() {
-        // Dashpot (damper) visualization
-        const damperGroup = new THREE.Group();
-
-        const cylinderMat = new THREE.MeshStandardMaterial({
-            color: 0xff6666,
-            metalness: 0.3,
-            roughness: 0.5
-        });
-
-        // Outer cylinder
-        const outerGeo = new THREE.CylinderGeometry(0.25, 0.25, 2, 16);
-        const outer = new THREE.Mesh(outerGeo, cylinderMat);
-        damperGroup.add(outer);
-
-        // Piston
-        const pistonMat = new THREE.MeshStandardMaterial({
-            color: 0x666666,
-            metalness: 0.7,
-            roughness: 0.3
-        });
-        const pistonGeo = new THREE.CylinderGeometry(0.15, 0.15, 2.5, 12);
-        this.piston = new THREE.Mesh(pistonGeo, pistonMat);
-        damperGroup.add(this.piston);
-
-        damperGroup.position.set(this.fixedX - 2.8, 0, 0);
-        damperGroup.rotation.z = Math.PI / 2;
-        this.scene.add(damperGroup);
-        this.damperGroup = damperGroup;
     }
 
     addStressColorBar() {
@@ -627,22 +561,8 @@ class ElasticRodApp {
         geometry.computeVertexNormals();
         geometry.computeBoundingSphere();
     }
+    // Removed spring/damper 3D visuals - keeping clean cantilever beam design
 
-    updateSpringDamperVisuals() {
-        // Animate spring compression
-        if (this.springCoils) {
-            const stretch = this.tipDisp.y * 0.1;
-            this.springCoils.forEach((coil, i) => {
-                const baseY = -2 + (i / this.springCoils.length) * 4;
-                coil.position.y = baseY + stretch * (i / this.springCoils.length);
-            });
-        }
-
-        // Animate damper piston
-        if (this.piston) {
-            this.piston.position.x = this.tipDisp.y * 0.2;
-        }
-    }
 
     updateCharts() {
         this.drawTimeHistoryChart();
@@ -802,7 +722,6 @@ class ElasticRodApp {
         const delta = this.clock.getDelta();
         this.simulate(delta);
         this.updateRodGeometry();
-        this.updateSpringDamperVisuals();
         this.updateCharts();
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
