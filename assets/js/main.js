@@ -116,6 +116,9 @@ const SkyShader = {
 
 // --- Scene Setup ---
 const canvas = document.getElementById('bg-canvas');
+console.log('[CANVAS] Element:', canvas);
+console.log('[CANVAS] Size:', canvas?.width, canvas?.height, 'Client:', canvas?.clientWidth, canvas?.clientHeight);
+
 const scene = new THREE.Scene();
 // Add a test background to verify renderer - should show blue if sky fails
 scene.background = new THREE.Color(0x87CEEB); // Light blue sky fallback
@@ -134,6 +137,10 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0; // Increased from 0.5 for brighter sky
+
+console.log('[RENDERER] Size:', renderer.getSize(new THREE.Vector2()));
+console.log('[RENDERER] WebGL Context:', renderer.getContext());
+console.log('[RENDERER] Canvas after init:', renderer.domElement.width, renderer.domElement.height);
 
 // --- 1. Realistic Sky Setup ---
 const sky = new Sky();
