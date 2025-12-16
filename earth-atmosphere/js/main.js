@@ -777,13 +777,8 @@ class GlobalCirculationApp {
             this.itczGroup.position.y = itczShift;
         }
 
-        // === PRESSURE SYSTEM ANIMATION ===
-        if (this.pressureMarkers) {
-            this.pressureMarkers.forEach(marker => {
-                // Pressure systems slowly drift
-                marker.mesh.rotation.y += delta * 0.1;
-            });
-        }
+        // === PRESSURE BELT SEASONAL MIGRATION ===
+        this.updatePressureBelts();
     }
 
     // === PRESSURE SYSTEMS (H/L markers) ===
@@ -879,10 +874,10 @@ class GlobalCirculationApp {
         const arcticHigh = createPressureMarker(85, 0, true, 'Arctic High');
         const antarcticHigh = createPressureMarker(-85, 0, true, 'Antarctic High');
 
-        // ITCZ Low pressure
-        const itczLow1 = createPressureMarker(5, 0, false, 'ITCZ');
-        const itczLow2 = createPressureMarker(5, 120, false, 'ITCZ');
-        const itczLow3 = createPressureMarker(5, -120, false, 'ITCZ');
+        // ITCZ Low pressure (these will move most dramatically)
+        const itczLow1 = createPressureMarker(0, 0, false, 'ITCZ');
+        const itczLow2 = createPressureMarker(0, 120, false, 'ITCZ');
+        const itczLow3 = createPressureMarker(0, -120, false, 'ITCZ');
 
         const allPressure = [
             azoresHigh, pacificHigh, bermudaHigh,
@@ -894,11 +889,56 @@ class GlobalCirculationApp {
 
         this.pressureGroup = new THREE.Group();
         allPressure.forEach(p => {
+            // Store base latitude for seasonal migration
+            p.baseLat = p.lat;
             this.pressureGroup.add(p.group);
             this.pressureMarkers.push(p);
         });
 
         this.fixedAtmosphere.add(this.pressureGroup);
+    }
+
+    updatePressureBelts() {
+        // === SEASONAL MIGRATION OF PRESSURE BELTS ===
+        if (!this.pressureMarkers) return;
+
+        const seasonFactor = Math.sin(this.yearTime); // -1 to 1
+
+        this.pressureMarkers.forEach(marker => {
+            // Different migration amounts based on pressure type
+            let seasonalShift = 0;
+
+            if (marker.label === 'ITCZ') {
+                // ITCZ moves most dramatically: ±10°
+                seasonalShift = seasonFactor * 10;
+            } else if (Math.abs(marker.baseLat) < 40) {
+                // Subtropical highs: ±5°
+                seasonalShift = seasonFactor * 5;
+            } else if (Math.abs(marker.baseLat) < 70) {
+                // Subpolar lows: ±3°
+                seasonalShift = seasonFactor * 3;
+            } else {
+                // Polar highs: minimal movement ±1°
+                seasonalShift = seasonFactor * 1;
+            }
+
+            // Calculate new latitude
+            const newLat = marker.baseLat + seasonalShift;
+
+            // Update position
+            const newPos = this.latLonToVector3(newLat, marker.lon, 1.08);
+
+            // Update group position (contains sprite and arrows)
+            marker.group.position.set(0, 0, 0);
+            marker.group.children.forEach(child => {
+                if (child.isSprite) {
+                    child.position.copy(newPos);
+                }
+            });
+
+            // Store current lat for reference
+            marker.currentLat = newLat;
+        });
     }
 
     onResize() {
