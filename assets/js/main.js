@@ -145,7 +145,9 @@ console.log('[RENDERER] Canvas after init:', renderer.domElement.width, renderer
 // --- 1. Realistic Sky Setup ---
 const sky = new Sky();
 sky.scale.setScalar(450000);
-scene.add(sky);
+// TEMPORARY: Comment out to test if scene.background shows
+// scene.add(sky);
+console.log('[DEBUG] Sky NOT added to scene - testing scene.background');
 
 const sun = new THREE.Vector3();
 const skyUniforms = sky.material.uniforms;
