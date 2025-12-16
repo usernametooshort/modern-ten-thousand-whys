@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// Post-processing from CDN (due to local path issues)
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm';
+const { EffectComposer } = await import(`${THREE_CDN}/postprocessing/EffectComposer.js`);
+const { RenderPass } = await import(`${THREE_CDN}/postprocessing/RenderPass.js`);
+const { UnrealBloomPass } = await import(`${THREE_CDN}/postprocessing/UnrealBloomPass.js`);
 
 // ============================================================
 // NANO BANANA PRO - Plate Tectonics Visualization
