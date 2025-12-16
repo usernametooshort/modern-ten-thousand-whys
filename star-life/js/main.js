@@ -579,37 +579,62 @@ class StarLifecycleApp {
         this.starGlow.scale.set(5, 5, 1);
         this.scene.add(this.starGlow);
 
-        // Nebula
-        const pCount = 8000;
+        // NANO BANANA PRO: Enhanced Nebula with AI-generated texture
+        const nebulaTextureLoader = new THREE.TextureLoader();
+        const nebulaTexture = nebulaTextureLoader.load('textures/nebula_dust.png');
+
+        const pCount = 12000;  // More particles for denser nebula
         const pGeo = new THREE.BufferGeometry();
         const pPos = new Float32Array(pCount * 3);
+        const pColors = new Float32Array(pCount * 3);  // Per-particle colors
         const pSizes = new Float32Array(pCount);
-        const cloudMap = this.createCloudTexture();
 
         for (let i = 0; i < pCount; i++) {
-            const r = 5 + Math.pow(Math.random(), 1.5) * 35;
+            const r = 5 + Math.pow(Math.random(), 1.3) * 40;
             const branchAngle = (Math.random() * Math.PI * 2);
-            const spiralAngle = r * 0.2;
+            const spiralAngle = r * 0.15;
             const theta = branchAngle + spiralAngle;
 
-            const spread = 2.0;
+            const spread = 3.0;
             pPos[i * 3] = r * Math.cos(theta) + (Math.random() - 0.5) * spread;
-            pPos[i * 3 + 1] = (Math.random() - 0.5) * (r * 0.2);
+            pPos[i * 3 + 1] = (Math.random() - 0.5) * (r * 0.25);
             pPos[i * 3 + 2] = r * Math.sin(theta) + (Math.random() - 0.5) * spread;
-            pSizes[i] = Math.random() * 2.0 + 0.5;
+
+            // Varied particle sizes
+            pSizes[i] = Math.random() * 3.0 + 1.0;
+
+            // Color variation: blue to purple to red
+            const colorMix = Math.random();
+            if (colorMix < 0.4) {
+                // Blue nebula gas
+                pColors[i * 3] = 0.4 + Math.random() * 0.2;
+                pColors[i * 3 + 1] = 0.6 + Math.random() * 0.2;
+                pColors[i * 3 + 2] = 1.0;
+            } else if (colorMix < 0.7) {
+                // Purple/magenta
+                pColors[i * 3] = 0.6 + Math.random() * 0.3;
+                pColors[i * 3 + 1] = 0.3 + Math.random() * 0.2;
+                pColors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+            } else {
+                // Red/orange dust
+                pColors[i * 3] = 0.8 + Math.random() * 0.2;
+                pColors[i * 3 + 1] = 0.3 + Math.random() * 0.3;
+                pColors[i * 3 + 2] = 0.2 + Math.random() * 0.2;
+            }
         }
         pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
         pGeo.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
+        pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
 
         const pMat = new THREE.PointsMaterial({
-            color: 0x88ccff,
-            size: 1.0,
+            size: 2.5,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.6,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            map: cloudMap,
-            sizeAttenuation: true
+            map: nebulaTexture,
+            sizeAttenuation: true,
+            vertexColors: true  // Use per-particle colors
         });
 
         this.nebula = new THREE.Points(pGeo, pMat);
