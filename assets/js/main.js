@@ -1,5 +1,7 @@
 
+console.log('[MAIN.JS] Script starting...');
 import * as THREE from 'three';
+console.log('[MAIN.JS] THREE imported:', !!THREE);
 
 // --- Sky Shader definition (Inlined for reliability) ---
 const Sky = function () {
