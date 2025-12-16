@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
         }
     </script>
 </head>
+
 <body>
     <a href="../index.html" class="back-to-home" data-i18n="back_to_home">← 返回目录</a>
     <canvas id="scene-canvas" aria-hidden="true"></canvas>
@@ -34,7 +36,8 @@
         <div class="controls">
             <section>
                 <h3 class="eyebrow" data-i18n="elast_ctrl_interact">交互操作</h3>
-                <p class="hint" data-i18n="elast_ctrl_drag" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">提示：用鼠标或手指拖动棒子顶端</p>
+                <p class="hint" data-i18n="elast_ctrl_drag"
+                    style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">提示：用鼠标或手指拖动棒子顶端</p>
                 <div class="button-group">
                     <button id="btn-pluck" data-i18n="btn_pluck">Pluck (拨动)</button>
                     <button id="btn-reset" data-i18n="btn_reset">重置</button>
@@ -44,26 +47,52 @@
             <section>
                 <h3 class="eyebrow" data-i18n="elast_ctrl_params">参数调整</h3>
                 <div class="control-group">
-                    <label for="stiffness-range"><span data-i18n="elast_lbl_k">弹性系数 (k)</span></label>
-                    <input type="range" id="stiffness-range" min="5" max="1000" value="25">
+                    <label for="stiffness-range"><span data-i18n="elast_lbl_k">弹性系数 k (N/m)</span></label>
+                    <input type="range" id="stiffness-range" min="5" max="200" value="25">
                     <span id="stiffness-value" class="value">25</span>
                 </div>
                 <div class="control-group">
-                    <label for="damping-range"><span data-i18n="elast_lbl_damping">阻尼系数 (c)</span></label>
-                    <input type="range" id="damping-range" min="0" max="2" step="0.05" value="0.2">
-                    <span id="damping-value" class="value">0.2</span>
+                    <label for="damping-range"><span data-i18n="elast_lbl_damping">阻尼系数 c (N·s/m)</span></label>
+                    <input type="range" id="damping-range" min="0" max="20" step="0.1" value="0.5">
+                    <span id="damping-value" class="value">0.5</span>
+                </div>
+            </section>
+
+            <section class="derived-params">
+                <h3 class="eyebrow">导出参数 (Derived)</h3>
+                <div class="param-row">
+                    <span class="param-label">固有频率 ωn/(2π):</span>
+                    <span id="freq-value" class="param-value">0.80 Hz</span>
+                </div>
+                <div class="param-row">
+                    <span class="param-label">阻尼比 ζ:</span>
+                    <span id="zeta-value" class="param-value">0.050</span>
+                </div>
+                <div class="param-row">
+                    <span class="param-label">状态:</span>
+                    <span id="regime-indicator" class="regime underdamped">Underdamped (欠阻尼)</span>
                 </div>
             </section>
 
             <section class="charts">
-                <h3 class="eyebrow" data-i18n="elast_legend_title">物理量</h3>
+                <h3 class="eyebrow">动态图表</h3>
                 <div class="chart-card">
-                    <label data-i18n="elast_leg_amp">振幅 (Amplitude)</label>
-                    <canvas id="amplitude-chart" width="280" height="60"></canvas>
+                    <label>位移-时间 y(t)</label>
+                    <canvas id="amplitude-chart" width="280" height="80"></canvas>
                 </div>
                 <div class="chart-card">
-                    <label data-i18n="elast_leg_freq">频率 (Frequency)</label>
-                    <canvas id="frequency-chart" width="280" height="60"></canvas>
+                    <label>相空间 (x, ẋ)</label>
+                    <canvas id="frequency-chart" width="280" height="120"></canvas>
+                </div>
+            </section>
+
+            <section class="formula-box">
+                <h3 class="eyebrow">方程 (Equation)</h3>
+                <div class="formula">
+                    mẍ + cẋ + kx = 0
+                </div>
+                <div class="formula-desc">
+                    ωn = √(k/m) &nbsp;|&nbsp; ζ = c/(2√km)
                 </div>
             </section>
         </div>
@@ -72,4 +101,5 @@
     <script src="../assets/js/i18n.js?v=20241126_22"></script>
     <script type="module" src="js/main.js?v=20241126_22"></script>
 </body>
+
 </html>
