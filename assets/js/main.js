@@ -124,12 +124,12 @@ camera.position.set(0, 0, 5); // Moved back slightly for particle depth
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     antialias: true,
-    alpha: true // Enable alpha for fallback CSS
+    alpha: false // Disable alpha - we want sky to be the background
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.5;
+renderer.toneMappingExposure = 1.0; // Increased from 0.5 for brighter sky
 
 // --- 1. Realistic Sky Setup ---
 const sky = new Sky();
