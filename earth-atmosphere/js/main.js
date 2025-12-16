@@ -507,41 +507,155 @@ class GlobalCirculationApp {
     }
 
     addWindBelts() {
-        LATITUDES.forEach(info => {
-            const rad = THREE.MathUtils.degToRad(info.lat);
-            const y = 1.01 * Math.sin(rad);
-            const r = 1.01 * Math.cos(rad);
+        // === NANO BANANA PRO: Professional Gradient Pressure Bands ===
+        // Replace thin rings with beautiful gradient bands that move seasonally
 
-            if (r < 0.01) return;
+        this.pressureBands = []; // Store for seasonal animation
 
-            const ringGeometry = new THREE.RingGeometry(r - 0.015, r + 0.015, 64);
-            const ringMaterial = new THREE.MeshBasicMaterial({
-                color: info.color,
+        const createPressureBand = (baseLat, width, color, labelKey, isNorth) => {
+            const group = new THREE.Group();
+
+            // Create gradient torus for the band
+            const lat = THREE.MathUtils.degToRad(baseLat);
+            const y = 1.015 * Math.sin(lat);
+            const r = 1.015 * Math.cos(lat);
+
+            if (r < 0.05) return null;
+
+            // Use TorusGeometry for smoother, more professional look
+            const torusGeo = new THREE.TorusGeometry(r, width, 8, 96);
+
+            // Create gradient texture for the band
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+
+            // Smooth gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 32);
+            const baseColor = new THREE.Color(color);
+            gradient.addColorStop(0, `rgba(${baseColor.r * 255}, ${baseColor.g * 255}, ${baseColor.b * 255}, 0)`);
+            gradient.addColorStop(0.3, `rgba(${baseColor.r * 255}, ${baseColor.g * 255}, ${baseColor.b * 255}, 0.6)`);
+            gradient.addColorStop(0.5, `rgba(${baseColor.r * 255}, ${baseColor.g * 255}, ${baseColor.b * 255}, 0.8)`);
+            gradient.addColorStop(0.7, `rgba(${baseColor.r * 255}, ${baseColor.g * 255}, ${baseColor.b * 255}, 0.6)`);
+            gradient.addColorStop(1, `rgba(${baseColor.r * 255}, ${baseColor.g * 255}, ${baseColor.b * 255}, 0)`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 32);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+
+            const torusMat = new THREE.MeshBasicMaterial({
+                color: color,
                 transparent: true,
-                opacity: 0.6,
+                opacity: 0.4,
                 side: THREE.DoubleSide,
-                depthWrite: false
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
             });
-            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.y = y;
-            this.fixedAtmosphere.add(ring);
 
-            if (info.lat > 0) {
-                const southRing = ring.clone();
-                southRing.position.y = -y;
-                this.fixedAtmosphere.add(southRing);
-                // Store with no label key, or handle south labels separately if needed (same usually)
-                this.windLabels.push({ ring: southRing, label: null });
+            const torus = new THREE.Mesh(torusGeo, torusMat);
+            torus.rotation.x = Math.PI / 2;
+            torus.position.y = y;
+            group.add(torus);
+
+            // Add label
+            const text = window.i18n ? window.i18n.get(labelKey) : labelKey;
+            const label = this.createLabelSprite(text);
+            label.position.set(r + 0.25, y, 0);
+            group.add(label);
+
+            this.fixedAtmosphere.add(group);
+
+            return {
+                group,
+                torus,
+                label,
+                baseLat,
+                currentLat: baseLat,
+                labelKey,
+                isNorth
+            };
+        };
+
+        // === CREATE PRESSURE BANDS ===
+        // Equatorial Low (ITCZ)
+        const itcz = createPressureBand(0, 0.02, 0xff6644, 'earth_lbl_equator', true);
+        if (itcz) this.pressureBands.push(itcz);
+
+        // Subtropical Highs (30°)
+        const subHighN = createPressureBand(30, 0.018, 0x4488ff, 'earth_lbl_subtrop', true);
+        const subHighS = createPressureBand(-30, 0.018, 0x4488ff, 'earth_lbl_subtrop', false);
+        if (subHighN) this.pressureBands.push(subHighN);
+        if (subHighS) this.pressureBands.push(subHighS);
+
+        // Subpolar Lows (60°)  
+        const subpolarN = createPressureBand(60, 0.015, 0xff7ad1, 'earth_lbl_subpolar', true);
+        const subpolarS = createPressureBand(-60, 0.015, 0xff7ad1, 'earth_lbl_subpolar', false);
+        if (subpolarN) this.pressureBands.push(subpolarN);
+        if (subpolarS) this.pressureBands.push(subpolarS);
+
+        // Polar Highs (85°)
+        const polarN = createPressureBand(85, 0.012, 0x6ee7c8, 'earth_lbl_polar', true);
+        const polarS = createPressureBand(-85, 0.012, 0x6ee7c8, 'earth_lbl_polar', false);
+        if (polarN) this.pressureBands.push(polarN);
+        if (polarS) this.pressureBands.push(polarS);
+
+        // Store windLabels for compatibility
+        this.windLabels = this.pressureBands.map(b => ({
+            ring: b.torus,
+            label: b.label,
+            key: b.labelKey
+        }));
+    }
+
+    updateWindBelts() {
+        // === SEASONAL MIGRATION OF PRESSURE BANDS ===
+        if (!this.pressureBands) return;
+
+        const seasonFactor = Math.sin(this.yearTime);
+
+        this.pressureBands.forEach(band => {
+            // Calculate seasonal shift based on base latitude
+            let seasonalShift = 0;
+            const absLat = Math.abs(band.baseLat);
+
+            if (absLat < 10) {
+                // ITCZ: ±10°
+                seasonalShift = seasonFactor * 10;
+            } else if (absLat < 40) {
+                // Subtropical: ±5°
+                seasonalShift = seasonFactor * 5;
+            } else if (absLat < 70) {
+                // Subpolar: ±3°
+                seasonalShift = seasonFactor * 3;
+            } else {
+                // Polar: ±1°
+                seasonalShift = seasonFactor * 1;
             }
 
-            // Get text via i18n if available
-            const text = window.i18n ? window.i18n.get(info.labelKey) : info.labelKey;
-            const label = this.createLabelSprite(text);
-            label.position.set(r + 0.3, y, 0);
-            this.fixedAtmosphere.add(label);
+            // Apply shift in the correct direction
+            const newLat = band.baseLat + seasonalShift;
+            band.currentLat = newLat;
 
-            this.windLabels.push({ ring, label, key: info.labelKey });
+            // Update torus position
+            const latRad = THREE.MathUtils.degToRad(newLat);
+            const y = 1.015 * Math.sin(latRad);
+            const r = 1.015 * Math.cos(latRad);
+
+            if (band.torus) {
+                band.torus.position.y = y;
+                // Update torus radius for new latitude
+                // We need to recreate geometry or scale it
+                const scale = r / (1.015 * Math.cos(THREE.MathUtils.degToRad(band.baseLat)));
+                band.torus.scale.x = scale;
+                band.torus.scale.z = scale;
+            }
+
+            if (band.label) {
+                band.label.position.set(r + 0.25, y, 0);
+            }
         });
     }
 
@@ -779,6 +893,9 @@ class GlobalCirculationApp {
 
         // === PRESSURE BELT SEASONAL MIGRATION ===
         this.updatePressureBelts();
+
+        // === WIND BELT SEASONAL MIGRATION ===
+        this.updateWindBelts();
     }
 
     // === PRESSURE SYSTEMS (H/L markers) ===
