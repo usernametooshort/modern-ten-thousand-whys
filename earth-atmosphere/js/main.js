@@ -158,310 +158,246 @@ class GlobalCirculationApp {
     }
 
     addVerticalCells() {
-        // === NANO BANANA PRO: Scientifically Accurate 3D Circulation Cells ===
-
-        const rSurface = 1.02;
-        const rTropopause = 1.18;
-
-        // Create a single 3D cell with proper vertical structure
-        const createCell = (latStart, latEnd, color, isClockwise, cellName) => {
-            const group = new THREE.Group();
-            group.userData.cellName = cellName;
-
-            const startRad = THREE.MathUtils.degToRad(latStart);
-            const endRad = THREE.MathUtils.degToRad(latEnd);
-
-            // Cell boundary loop (2D cross-section in lat-altitude plane)
-            const loopPoints = [];
-            const steps = 32;
-
-            // Bottom: surface level from latStart to latEnd
-            for (let i = 0; i <= steps; i++) {
-                const t = i / steps;
-                const lat = THREE.MathUtils.lerp(startRad, endRad, t);
-                loopPoints.push(new THREE.Vector3(0, Math.sin(lat) * rSurface, Math.cos(lat) * rSurface));
-            }
-
-            // Rising column at one end
-            const riseLat = isClockwise ? endRad : startRad;
-            for (let i = 0; i <= steps / 2; i++) {
-                const t = i / (steps / 2);
-                const r = THREE.MathUtils.lerp(rSurface, rTropopause, t);
-                loopPoints.push(new THREE.Vector3(0, Math.sin(riseLat) * r, Math.cos(riseLat) * r));
-            }
-
-            // Top: tropopause level (reverse direction)
-            for (let i = 0; i <= steps; i++) {
-                const t = i / steps;
-                const lat = THREE.MathUtils.lerp(endRad, startRad, t);
-                loopPoints.push(new THREE.Vector3(0, Math.sin(lat) * rTropopause, Math.cos(lat) * rTropopause));
-            }
-
-            // Descending column
-            const descLat = isClockwise ? startRad : endRad;
-            for (let i = 0; i <= steps / 2; i++) {
-                const t = i / (steps / 2);
-                const r = THREE.MathUtils.lerp(rTropopause, rSurface, t);
-                loopPoints.push(new THREE.Vector3(0, Math.sin(descLat) * r, Math.cos(descLat) * r));
-            }
-
-            // Close the loop
-            loopPoints.push(loopPoints[0].clone());
-
-            const curve = new THREE.CatmullRomCurve3(loopPoints, true);
-            const tubeGeo = new THREE.TubeGeometry(curve, 128, 0.012, 8, true);
-
-            // Animated flow texture
-            const flowTexture = this.createFlowTexture(color);
-            flowTexture.wrapS = THREE.RepeatWrapping;
-            flowTexture.repeat.set(8, 1);
-
-            const tubeMat = new THREE.MeshBasicMaterial({
-                color: color,
-                map: flowTexture,
-                transparent: true,
-                opacity: 0.85,
-                side: THREE.DoubleSide,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
-            });
-
-            const tube = new THREE.Mesh(tubeGeo, tubeMat);
-            tube.userData = { speed: isClockwise ? -0.6 : 0.6 };
-            group.add(tube);
-
-            // Add directional arrows along the flow
-            this.addFlowArrows(group, loopPoints, color, isClockwise);
-
-            return { group, tube };
-        };
-
-        // === Create all 6 cells (3 per hemisphere) ===
-
-        // Northern Hemisphere
-        const hadleyN = createCell(0, 30, COLOR_HADLEY, true, 'Hadley');    // Rising at ITCZ (0°), sinking at 30°
-        const ferrelN = createCell(30, 60, COLOR_FERREL, false, 'Ferrel');  // Indirect cell
-        const polarN = createCell(60, 85, COLOR_POLAR, true, 'Polar');      // Rising at polar front, sinking at pole
-
-        // Southern Hemisphere (mirrored)
-        const hadleyS = createCell(-30, 0, COLOR_HADLEY, true, 'Hadley');
-        const ferrelS = createCell(-60, -30, COLOR_FERREL, false, 'Ferrel');
-        const polarS = createCell(-85, -60, COLOR_POLAR, true, 'Polar');
+        // === NANO BANANA PRO v2: Clean Scientific Visualization ===
+        // Elegant flowing streamlines instead of cluttered geometry
 
         this.cellGroup = new THREE.Group();
 
-        // Distribute cells around the planet
-        const cellInstances = 8;
-        for (let i = 0; i < cellInstances; i++) {
-            const angle = (i / cellInstances) * Math.PI * 2;
+        // === CROSS-SECTION VISUALIZATION (Single elegant slice) ===
+        // Show ONE clear meridional cross-section for educational clarity
+        this.addMeridionalSection();
 
-            [hadleyN, ferrelN, polarN, hadleyS, ferrelS, polarS].forEach(cell => {
-                const clone = cell.group.clone();
-                clone.rotation.y = angle;
-                this.cellGroup.add(clone);
+        // === SURFACE WIND STREAMLINES ===
+        // Smooth flowing lines showing Trade Winds, Westerlies, Polar Easterlies
+        this.addSurfaceWinds();
 
-                // Store tube for animation
-                clone.traverse(child => {
-                    if (child.isMesh && child.userData.speed) {
-                        this.cellLoops.push(child);
-                    }
-                });
-            });
-        }
+        // === JET STREAMS (Elegant wavy bands) ===
+        this.addJetStreamBands();
+
+        // === VERTICAL MOTION INDICATORS ===
+        // Subtle rising/sinking markers at key latitudes
+        this.addVerticalMotionMarkers();
 
         this.fixedAtmosphere.add(this.cellGroup);
-
-        // === Add Jet Streams ===
-        this.addJetStreams();
-
-        // === Add ITCZ Visualization ===
-        this.addITCZ();
     }
 
-    createFlowTexture(baseColor) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d');
+    addMeridionalSection() {
+        // Single elegant cross-section showing the 3 cells
+        const sectionGroup = new THREE.Group();
 
-        // Arrow pattern for flow visualization
-        const g = ctx.createLinearGradient(0, 0, 128, 0);
-        g.addColorStop(0, 'rgba(255,255,255,0)');
-        g.addColorStop(0.3, 'rgba(255,255,255,0.8)');
-        g.addColorStop(0.5, 'rgba(255,255,255,1)');
-        g.addColorStop(0.7, 'rgba(255,255,255,0.8)');
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 8, 128, 16);
+        const rInner = 1.02;
+        const rOuter = 1.12;
 
-        // Add arrow heads
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.moveTo(100, 16);
-        ctx.lineTo(115, 8);
-        ctx.lineTo(115, 24);
-        ctx.closePath();
-        ctx.fill();
+        // Create flowing curve for each cell (smooth Bezier curves)
+        const createCellCurve = (latStart, latEnd, color, label) => {
+            const startRad = THREE.MathUtils.degToRad(latStart);
+            const endRad = THREE.MathUtils.degToRad(latEnd);
+            const midRad = (startRad + endRad) / 2;
 
-        return new THREE.CanvasTexture(canvas);
-    }
-
-    addFlowArrows(group, points, color, isClockwise) {
-        // Add 3D arrow heads at key positions
-        const arrowPositions = [0.1, 0.3, 0.5, 0.7, 0.9];
-        const arrowGeo = new THREE.ConeGeometry(0.02, 0.05, 6);
-        const arrowMat = new THREE.MeshBasicMaterial({
-            color: color,
-            transparent: true,
-            opacity: 0.9
-        });
-
-        const totalPoints = points.length;
-        arrowPositions.forEach(t => {
-            const idx = Math.floor(t * totalPoints);
-            if (idx < totalPoints - 1) {
-                const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-                arrow.position.copy(points[idx]);
-
-                // Orient arrow in flow direction
-                const nextIdx = Math.min(idx + 1, totalPoints - 1);
-                const dir = new THREE.Vector3().subVectors(points[nextIdx], points[idx]).normalize();
-                arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-
-                group.add(arrow);
-            }
-        });
-    }
-
-    addJetStreams() {
-        // === Polar Jet Stream (~60° latitude) ===
-        const createJetStream = (latitude, color, name, waveAmplitude) => {
-            const group = new THREE.Group();
+            // Smooth elliptical path
             const points = [];
-            const segments = 128;
-            const radius = 1.14; // Near tropopause
+            const segments = 48;
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const angle = t * Math.PI * 2;
+
+                // Parametric ellipse in lat-alt plane
+                const latRange = endRad - startRad;
+                const lat = startRad + (latRange / 2) + (latRange / 2) * Math.cos(angle);
+                const altFactor = (Math.sin(angle) + 1) / 2; // 0 at bottom, 1 at top
+                const r = THREE.MathUtils.lerp(rInner, rOuter, altFactor);
+
+                points.push(new THREE.Vector3(0, Math.sin(lat) * r, Math.cos(lat) * r));
+            }
+
+            const curve = new THREE.CatmullRomCurve3(points, true);
+            const lineGeo = new THREE.TubeGeometry(curve, 64, 0.004, 6, true);
+
+            const lineMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+
+            const mesh = new THREE.Mesh(lineGeo, lineMat);
+            return mesh;
+        };
+
+        // Northern Hemisphere cells
+        const hadleyN = createCellCurve(0, 30, COLOR_HADLEY, 'Hadley');
+        const ferrelN = createCellCurve(30, 60, COLOR_FERREL, 'Ferrel');
+        const polarN = createCellCurve(60, 90, COLOR_POLAR, 'Polar');
+
+        // Southern Hemisphere cells
+        const hadleyS = createCellCurve(-30, 0, COLOR_HADLEY, 'Hadley');
+        const ferrelS = createCellCurve(-60, -30, COLOR_FERREL, 'Ferrel');
+        const polarS = createCellCurve(-90, -60, COLOR_POLAR, 'Polar');
+
+        sectionGroup.add(hadleyN, ferrelN, polarN, hadleyS, ferrelS, polarS);
+
+        // Add 3 more sections at 90° intervals for 3D effect
+        for (let i = 1; i < 4; i++) {
+            const clone = sectionGroup.clone();
+            clone.rotation.y = (i / 4) * Math.PI * 2;
+            this.cellGroup.add(clone);
+        }
+
+        this.cellGroup.add(sectionGroup);
+        this.cellLoops = []; // No animation needed for thin lines
+    }
+
+    addSurfaceWinds() {
+        // === Trade Winds (0-30°): Easterly ===
+        // === Westerlies (30-60°): Westerly ===  
+        // === Polar Easterlies (60-90°): Easterly ===
+
+        const windGroup = new THREE.Group();
+
+        const createWindBand = (latCenter, latWidth, color, isEasterly, numStreams) => {
+            const group = new THREE.Group();
+
+            for (let i = 0; i < numStreams; i++) {
+                const lon = (i / numStreams) * Math.PI * 2;
+                const lat = THREE.MathUtils.degToRad(latCenter + (Math.random() - 0.5) * latWidth);
+                const r = 1.025;
+
+                // Create curved wind arrow
+                const arrowLen = 0.15;
+                const curve = new THREE.QuadraticBezierCurve3(
+                    this.latLonToVector3(THREE.MathUtils.radToDeg(lat), THREE.MathUtils.radToDeg(lon), r),
+                    this.latLonToVector3(THREE.MathUtils.radToDeg(lat), THREE.MathUtils.radToDeg(lon + (isEasterly ? -0.1 : 0.1)), r + 0.005),
+                    this.latLonToVector3(THREE.MathUtils.radToDeg(lat), THREE.MathUtils.radToDeg(lon + (isEasterly ? -0.2 : 0.2)), r)
+                );
+
+                const lineGeo = new THREE.TubeGeometry(curve, 16, 0.003, 4, false);
+                const lineMat = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.6
+                });
+
+                group.add(new THREE.Mesh(lineGeo, lineMat));
+            }
+
+            return group;
+        };
+
+        // Trade winds (NE in NH, SE in SH)
+        windGroup.add(createWindBand(15, 20, COLOR_HADLEY, true, 24));
+        windGroup.add(createWindBand(-15, 20, COLOR_HADLEY, true, 24));
+
+        // Westerlies
+        windGroup.add(createWindBand(45, 20, COLOR_FERREL, false, 24));
+        windGroup.add(createWindBand(-45, 20, COLOR_FERREL, false, 24));
+
+        // Polar easterlies
+        windGroup.add(createWindBand(75, 15, COLOR_POLAR, true, 16));
+        windGroup.add(createWindBand(-75, 15, COLOR_POLAR, true, 16));
+
+        this.cellGroup.add(windGroup);
+    }
+
+    addJetStreamBands() {
+        // Elegant ribbon-like jet streams
+        const createJetRibbon = (latitude, color, width) => {
+            const points = [];
+            const segments = 96;
+            const r = 1.10;
 
             for (let i = 0; i <= segments; i++) {
                 const lon = (i / segments) * Math.PI * 2;
-                // Rossby wave pattern
-                const wavePhase = lon * 4 + this.clock.elapsedTime;
-                const latVariation = waveAmplitude * Math.sin(wavePhase);
-                const lat = THREE.MathUtils.degToRad(latitude + latVariation);
+                // Gentle Rossby wave undulation
+                const wave = Math.sin(lon * 5) * 3;
+                const lat = THREE.MathUtils.degToRad(latitude + wave);
 
-                const x = radius * Math.cos(lat) * Math.cos(lon);
-                const y = radius * Math.sin(lat);
-                const z = radius * Math.cos(lat) * Math.sin(lon);
+                const x = r * Math.cos(lat) * Math.cos(lon);
+                const y = r * Math.sin(lat);
+                const z = r * Math.cos(lat) * Math.sin(lon);
                 points.push(new THREE.Vector3(x, y, z));
             }
 
             const curve = new THREE.CatmullRomCurve3(points, true);
-            const tubeGeo = new THREE.TubeGeometry(curve, 128, 0.015, 8, true);
+            const tubeGeo = new THREE.TubeGeometry(curve, 96, width, 8, true);
 
-            const jetTexture = this.createJetTexture();
-            jetTexture.wrapS = THREE.RepeatWrapping;
-            jetTexture.repeat.set(16, 1);
-
-            const jetMat = new THREE.MeshBasicMaterial({
+            const tubeMat = new THREE.MeshBasicMaterial({
                 color: color,
-                map: jetTexture,
                 transparent: true,
-                opacity: 0.95,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
+                opacity: 0.5,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
             });
 
-            const jet = new THREE.Mesh(tubeGeo, jetMat);
-            jet.userData = {
-                name: name,
-                latitude: latitude,
-                waveAmplitude: waveAmplitude,
-                speed: 2.0 // Fast jet stream
-            };
-            group.add(jet);
-
-            return { group, jet };
+            const mesh = new THREE.Mesh(tubeGeo, tubeMat);
+            mesh.userData = { speed: 1.5 };
+            return mesh;
         };
 
-        // Polar jets
-        const polarJetN = createJetStream(60, 0x00ffff, 'Polar Jet (N)', 8);
-        const polarJetS = createJetStream(-60, 0x00ffff, 'Polar Jet (S)', 8);
+        // Polar jets (cyan)
+        const polarJetN = createJetRibbon(60, 0x00ccff, 0.008);
+        const polarJetS = createJetRibbon(-60, 0x00ccff, 0.008);
 
-        // Subtropical jets
-        const subtropJetN = createJetStream(30, 0xffaa00, 'Subtropical Jet (N)', 5);
-        const subtropJetS = createJetStream(-30, 0xffaa00, 'Subtropical Jet (S)', 5);
+        // Subtropical jets (gold)
+        const subJetN = createJetRibbon(30, 0xffcc00, 0.006);
+        const subJetS = createJetRibbon(-30, 0xffcc00, 0.006);
 
-        this.jetStreams = [polarJetN.jet, polarJetS.jet, subtropJetN.jet, subtropJetS.jet];
-
-        this.fixedAtmosphere.add(polarJetN.group);
-        this.fixedAtmosphere.add(polarJetS.group);
-        this.fixedAtmosphere.add(subtropJetN.group);
-        this.fixedAtmosphere.add(subtropJetS.group);
+        this.cellGroup.add(polarJetN, polarJetS, subJetN, subJetS);
+        this.jetStreams = [polarJetN, polarJetS, subJetN, subJetS];
     }
 
-    createJetTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 16;
-        const ctx = canvas.getContext('2d');
+    addVerticalMotionMarkers() {
+        // Subtle indicators for rising/sinking air
+        const markerGroup = new THREE.Group();
 
-        // Fast-moving streaks
-        const g = ctx.createLinearGradient(0, 0, 64, 0);
-        g.addColorStop(0, 'rgba(255,255,255,0)');
-        g.addColorStop(0.2, 'rgba(255,255,255,1)');
-        g.addColorStop(0.5, 'rgba(255,255,255,1)');
-        g.addColorStop(0.8, 'rgba(255,255,255,0.5)');
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 4, 64, 8);
+        const createMarker = (lat, isRising, color) => {
+            const r = 1.03;
+            const count = 12;
+            const group = new THREE.Group();
 
-        return new THREE.CanvasTexture(canvas);
-    }
+            for (let i = 0; i < count; i++) {
+                const lon = (i / count) * Math.PI * 2;
 
-    addITCZ() {
-        // === Intertropical Convergence Zone ===
-        // Visible rising air column at equator
+                // Small arrow
+                const arrowGeo = new THREE.ConeGeometry(0.008, 0.025, 4);
+                const arrowMat = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.7
+                });
 
-        const itczGroup = new THREE.Group();
-
-        // Rising air columns
-        const columnCount = 16;
-        for (let i = 0; i < columnCount; i++) {
-            const lon = (i / columnCount) * Math.PI * 2;
-
-            // Vertical arrow showing rising motion
-            const arrowGeo = new THREE.ConeGeometry(0.02, 0.08, 6);
-            const arrowMat = new THREE.MeshBasicMaterial({
-                color: 0xff6622,
-                transparent: true,
-                opacity: 0.8
-            });
-
-            for (let h = 0; h < 3; h++) {
                 const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-                const r = 1.04 + h * 0.04;
-                arrow.position.set(
-                    r * Math.cos(lon),
-                    0.02 + h * 0.04, // Slightly above equator
-                    r * Math.sin(lon)
-                );
-                itczGroup.add(arrow);
+                const pos = this.latLonToVector3(lat, THREE.MathUtils.radToDeg(lon), r);
+                arrow.position.copy(pos);
+
+                // Point up for rising, down for sinking
+                if (!isRising) arrow.rotation.x = Math.PI;
+
+                // Orient radially
+                arrow.lookAt(0, 0, 0);
+                arrow.rotateX(isRising ? Math.PI / 2 : -Math.PI / 2);
+
+                group.add(arrow);
             }
-        }
 
-        // Glowing equatorial band
-        const bandGeo = new THREE.TorusGeometry(1.03, 0.015, 8, 64);
-        const bandMat = new THREE.MeshBasicMaterial({
-            color: 0xff4400,
-            transparent: true,
-            opacity: 0.6,
-            blending: THREE.AdditiveBlending
-        });
-        const band = new THREE.Mesh(bandGeo, bandMat);
-        band.rotation.x = Math.PI / 2;
-        itczGroup.add(band);
+            return group;
+        };
 
-        this.itczGroup = itczGroup;
-        this.fixedAtmosphere.add(itczGroup);
+        // ITCZ - Rising (equator)
+        markerGroup.add(createMarker(0, true, 0xff6644));
+
+        // Subtropical - Sinking (30°)
+        markerGroup.add(createMarker(30, false, 0x4488ff));
+        markerGroup.add(createMarker(-30, false, 0x4488ff));
+
+        // Polar Front - Rising (60°)
+        markerGroup.add(createMarker(60, true, 0x44ff88));
+        markerGroup.add(createMarker(-60, true, 0x44ff88));
+
+        // Poles - Sinking
+        markerGroup.add(createMarker(85, false, 0x88ccff));
+        markerGroup.add(createMarker(-85, false, 0x88ccff));
+
+        this.cellGroup.add(markerGroup);
     }
 
     addWindBelts() {
