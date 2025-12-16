@@ -560,28 +560,100 @@ class TectonicsApp {
     createMidOceanRidge(length, width) {
         const group = new THREE.Group();
 
-        // Create rift valley shape
-        const ridgeGeo = new THREE.PlaneGeometry(width, length, 32, 64);
-        const pos = ridgeGeo.attributes.position;
+        // === GLOWING MAGMA CHANNEL ===
+        // Create a proper lava pool with emissive glow
 
-        for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i);
-            const y = pos.getY(i);
+        // Lava channel geometry (sunken in the rift)
+        const channelWidth = width * 0.4;
+        const channelGeo = new THREE.PlaneGeometry(channelWidth, length, 16, 32);
+        const channelPos = channelGeo.attributes.position;
 
-            // V-shaped valley at center
-            const valleyDepth = Math.exp(-Math.pow(x / (width * 0.1), 2)) * 0.5;
-            const ridgeHeight = Math.abs(x) / (width * 0.5) * 0.3;
+        // Add some terrain variation
+        for (let i = 0; i < channelPos.count; i++) {
+            const x = channelPos.getX(i);
+            const y = channelPos.getY(i);
+            channelPos.setZ(i, Math.sin(y * 0.5) * 0.05 + (Math.random() - 0.5) * 0.02);
+        }
+        channelGeo.computeVertexNormals();
+        channelGeo.rotateX(-Math.PI / 2);
 
-            pos.setZ(i, ridgeHeight - valleyDepth + (Math.random() - 0.5) * 0.1);
+        // Glowing lava material
+        const lavaMat = new THREE.MeshBasicMaterial({
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        const lavaChannel = new THREE.Mesh(channelGeo, lavaMat);
+        lavaChannel.position.y = -0.1;
+        group.add(lavaChannel);
+
+        // === GLOWING ORB at center for bloom ===
+        const coreGeo = new THREE.SphereGeometry(0.3, 16, 16);
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa00
+        });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.y = 0;
+        group.add(core);
+        this.magmaCore = core;
+
+        // === RIFT WALLS (rocky edges) ===
+        const createRiftWall = (xOffset) => {
+            const wallGeo = new THREE.BoxGeometry(0.5, 0.8, length);
+            const wallPos = wallGeo.attributes.position;
+
+            // Add rocky texture
+            for (let i = 0; i < wallPos.count; i++) {
+                const y = wallPos.getY(i);
+                if (y > 0) {
+                    wallPos.setY(i, y + (Math.random() - 0.5) * 0.2);
+                }
+            }
+            wallGeo.computeVertexNormals();
+
+            const wall = new THREE.Mesh(wallGeo, this.matOceanic);
+            wall.position.set(xOffset, 0.2, 0);
+            wall.castShadow = true;
+            return wall;
+        };
+
+        group.add(createRiftWall(-channelWidth / 2 - 0.25));
+        group.add(createRiftWall(channelWidth / 2 + 0.25));
+
+        // === LAVA PARTICLE EMITTER POSITIONS ===
+        this.lavaEmitters = [];
+        for (let z = -length / 2 + 1; z < length / 2; z += 2) {
+            this.lavaEmitters.push(new THREE.Vector3(0, 0.2, z));
         }
 
-        ridgeGeo.computeVertexNormals();
-        ridgeGeo.rotateX(-Math.PI / 2);
-
-        const ridge = new THREE.Mesh(ridgeGeo, this.matLava);
-        group.add(ridge);
-
         return group;
+    }
+
+    createMagmaGlowSprite() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(255, 200, 50, 1)');
+        gradient.addColorStop(0.2, 'rgba(255, 120, 0, 0.9)');
+        gradient.addColorStop(0.5, 'rgba(255, 60, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        return new THREE.Sprite(mat);
     }
 
     // ============================================================
@@ -847,21 +919,87 @@ class TectonicsApp {
     // ============================================================
 
     spawnMagmaParticle(position, velocity) {
-        const geo = new THREE.SphereGeometry(0.1 + Math.random() * 0.1, 8, 8);
-        const mat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(1, 0.5 + Math.random() * 0.5, 0),
+        // Create glowing sprite instead of sphere
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        // Randomize color within lava range
+        const hue = 20 + Math.random() * 30; // 20-50 (orange to yellow)
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, `hsla(${hue}, 100%, 70%, 1)`);
+        gradient.addColorStop(0.3, `hsla(${hue - 10}, 100%, 50%, 0.9)`);
+        gradient.addColorStop(0.6, `hsla(${hue - 20}, 100%, 30%, 0.5)`);
+        gradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({
+            map: texture,
             transparent: true,
-            opacity: 1
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
-        const particle = new THREE.Mesh(geo, mat);
-        particle.position.copy(position);
-        particle.userData = {
+
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.copy(position);
+        const size = 0.2 + Math.random() * 0.3;
+        sprite.scale.set(size, size, 1);
+
+        sprite.userData = {
             velocity: velocity.clone(),
             age: 0,
-            maxAge: 2 + Math.random()
+            maxAge: 2 + Math.random() * 1.5,
+            initialSize: size
         };
-        this.scene.add(particle);
-        this.magmaParticles.push(particle);
+
+        this.scene.add(sprite);
+        this.magmaParticles.push(sprite);
+    }
+
+    spawnLavaBubble(position) {
+        // Rising lava bubble effect
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext('2d');
+
+        const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+        gradient.addColorStop(0, 'rgba(255, 220, 100, 1)');
+        gradient.addColorStop(0.4, 'rgba(255, 150, 0, 0.8)');
+        gradient.addColorStop(0.7, 'rgba(200, 50, 0, 0.4)');
+        gradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 32, 32);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const sprite = new THREE.Sprite(mat);
+        sprite.position.copy(position);
+        sprite.scale.set(0.15, 0.15, 1);
+
+        sprite.userData = {
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.3,
+                0.8 + Math.random() * 0.5,
+                (Math.random() - 0.5) * 0.3
+            ),
+            age: 0,
+            maxAge: 1 + Math.random() * 0.5
+        };
+
+        this.scene.add(sprite);
+        this.magmaParticles.push(sprite);
     }
 
     spawnSmokeParticle(position) {
@@ -975,20 +1113,42 @@ class TectonicsApp {
         this.plateL.position.x = -7 - offset;
         this.plateR.position.x = 7 + offset;
 
+        // Animate magma core glow
+        if (this.magmaCore) {
+            const pulse = Math.sin(time * 3) * 0.3 + 0.7;
+            this.magmaCore.scale.setScalar(0.3 + pulse * 0.2);
+            this.magmaCore.material.color.setHSL(0.08, 1, 0.5 + pulse * 0.2);
+        }
+
         // Hydrothermal vent smoke
         this.hydrothermalVents.forEach(vent => {
             vent.spawnTimer += delta;
-            if (vent.spawnTimer > 0.1) {
+            if (vent.spawnTimer > 0.08) {
                 vent.spawnTimer = 0;
                 this.spawnSmokeParticle(vent.position.clone().add(new THREE.Vector3(0, 0.8, 0)));
             }
         });
 
-        // Magma at ridge
-        if (this.params.showMagma && Math.random() < 0.1 * speed) {
+        // Lava bubbles rising from rift
+        if (this.params.showMagma && this.lavaEmitters) {
+            this.lavaEmitters.forEach(emitter => {
+                if (Math.random() < 0.05 * speed) {
+                    const pos = emitter.clone().add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.5,
+                        0,
+                        (Math.random() - 0.5) * 0.5
+                    ));
+                    this.spawnLavaBubble(pos.add(this.ridge.position));
+                }
+            });
+        }
+
+        // Larger magma blobs occasionally
+        if (this.params.showMagma && Math.random() < 0.02 * speed) {
+            const ridgePos = this.ridge ? this.ridge.position.clone() : new THREE.Vector3(0, 1.5, 0);
             this.spawnMagmaParticle(
-                new THREE.Vector3((Math.random() - 0.5) * 0.5, 1.5, (Math.random() - 0.5) * 10),
-                new THREE.Vector3(0, 0.5 + Math.random() * 0.5, 0)
+                ridgePos.add(new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.5, (Math.random() - 0.5) * 8)),
+                new THREE.Vector3((Math.random() - 0.5) * 0.5, 1 + Math.random() * 0.5, (Math.random() - 0.5) * 0.5)
             );
         }
     }
