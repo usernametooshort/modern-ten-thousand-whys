@@ -365,24 +365,48 @@ class GlobalCirculationApp {
         const positions = this.windParticles.geometry.attributes.position.array;
         const speed = delta * this.speedMultiplier * 50;
 
+        // === SEASONAL FACTORS ===
+        // yearTime cycles through a full year; sin(yearTime) gives seasonal shift
+        // Positive = NH summer (ITCZ north), Negative = NH winter (ITCZ south)
+        const seasonFactor = Math.sin(this.yearTime); // -1 to 1
+        const itczShift = seasonFactor * 10; // ITCZ migrates ±10° with seasons
+        const jetShift = seasonFactor * 5; // Jet streams shift ±5°
+        const tradeWindIntensity = 1 + seasonFactor * 0.3; // Monsoon effect
+
         for (let i = 0; i < this.windParticleData.length; i++) {
             const p = this.windParticleData[i];
 
+            // === SEASONAL WIND SPEED MODULATION ===
+            let seasonalSpeed = p.speed;
+
+            // Trade wind zone - stronger in winter hemisphere (monsoon)
+            if (Math.abs(p.lat) < 30) {
+                // NH trades stronger in NH winter, SH trades stronger in SH winter
+                const hemisphereSign = Math.sign(p.lat) || 1;
+                seasonalSpeed *= (1 - hemisphereSign * seasonFactor * 0.4);
+            }
+
+            // Westerlies - stronger in winter
+            if (Math.abs(p.lat) >= 30 && Math.abs(p.lat) < 60) {
+                const hemisphereSign = Math.sign(p.lat);
+                seasonalSpeed *= (1 - hemisphereSign * seasonFactor * 0.3);
+            }
+
             // Update longitude (main flow)
-            p.lon += p.speed * speed;
+            p.lon += seasonalSpeed * speed;
             if (p.lon > 360) p.lon -= 360;
             if (p.lon < 0) p.lon += 360;
 
-            // Slight latitude drift
-            p.lat += p.latDrift * speed;
-
-            // Keep in valid ranges and boundary conditions
+            // === SEASONAL LATITUDE DRIFT ===
+            // ITCZ particles drift toward seasonal thermal equator
             if (Math.abs(p.lat) < 30) {
-                // Trade wind zone - drift toward equator
-                p.lat *= 0.999;
+                // Trade wind zone - drift toward ITCZ
+                const targetLat = itczShift; // ITCZ position
+                p.lat += (targetLat - p.lat) * 0.001 * speed;
             } else if (Math.abs(p.lat) < 60) {
-                // Westerly zone - slight poleward drift
-                p.lat += Math.sign(p.lat) * 0.001 * speed;
+                // Westerly zone - slight poleward drift, affected by season
+                const driftRate = 0.001 * (1 + Math.abs(seasonFactor) * 0.5);
+                p.lat += Math.sign(p.lat) * driftRate * speed;
             }
 
             // Clamp latitude
@@ -428,6 +452,47 @@ class GlobalCirculationApp {
         }
 
         this.verticalParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    updateSeasonDisplay() {
+        // Update the season indicator UI
+        const seasonFactor = Math.sin(this.yearTime); // -1 to 1
+        const itczLat = seasonFactor * 10; // ITCZ position
+        const jetLat = 60 + seasonFactor * 5; // Jet stream position
+
+        // Determine season (NH perspective)
+        // yearTime 0 = spring, π/2 = summer, π = fall, 3π/2 = winter
+        const phase = (this.yearTime % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        let seasonIcon, seasonName;
+
+        if (phase < Math.PI / 2) {
+            // Spring (NH) / Fall (SH)
+            seasonIcon = '🌸';
+            seasonName = window.i18n ? window.i18n.get('season_spring') : '春季 (北半球)';
+        } else if (phase < Math.PI) {
+            // Summer (NH) / Winter (SH)
+            seasonIcon = '☀️';
+            seasonName = window.i18n ? window.i18n.get('season_summer') : '夏季 (北半球)';
+        } else if (phase < Math.PI * 1.5) {
+            // Fall (NH) / Spring (SH)
+            seasonIcon = '🍂';
+            seasonName = window.i18n ? window.i18n.get('season_fall') : '秋季 (北半球)';
+        } else {
+            // Winter (NH) / Summer (SH)
+            seasonIcon = '❄️';
+            seasonName = window.i18n ? window.i18n.get('season_winter') : '冬季 (北半球)';
+        }
+
+        // Update UI elements
+        const iconEl = document.getElementById('season-icon');
+        const nameEl = document.getElementById('season-name');
+        const itczEl = document.getElementById('itcz-position');
+        const jetEl = document.getElementById('jet-position');
+
+        if (iconEl) iconEl.textContent = seasonIcon;
+        if (nameEl) nameEl.textContent = seasonName;
+        if (itczEl) itczEl.textContent = `${itczLat.toFixed(1)}°${itczLat >= 0 ? 'N' : 'S'}`;
+        if (jetEl) jetEl.textContent = `${jetLat.toFixed(0)}°N / ${jetLat.toFixed(0)}°S`;
     }
 
     // Empty stubs for removed methods (keep API compatible)
@@ -691,6 +756,9 @@ class GlobalCirculationApp {
         // === FLUID PARTICLE ANIMATION ===
         this.updateFlowParticles(delta);
         this.updateVerticalParticles(delta);
+
+        // === SEASON DISPLAY UPDATE ===
+        this.updateSeasonDisplay();
 
         // === JET STREAM ANIMATION (Dynamic Rossby Waves) ===
         if (this.jetStreams) {

@@ -4,7 +4,7 @@
     --panel-bg: rgba(10, 16, 32, 0.82);
     --panel-border: rgba(255, 255, 255, 0.08);
     --text-main: #f0f4ff;
-    --text-muted: rgba(240,244,255,0.7);
+    --text-muted: rgba(240, 244, 255, 0.7);
     --accent: #58c2ff;
     --accent-warm: #f8c27a;
     --accent-cool: #5af5c0;
@@ -19,7 +19,7 @@ body {
     margin: 0;
     font-family: var(--font-sans);
     color: var(--text-main);
-    background: radial-gradient(circle at top, rgba(12,20,40,0.8), rgba(4,8,18,1));
+    background: radial-gradient(circle at top, rgba(12, 20, 40, 0.8), rgba(4, 8, 18, 1));
     overflow: hidden;
 }
 
@@ -42,7 +42,7 @@ body {
     border-radius: 20px;
     padding: 24px;
     backdrop-filter: blur(18px);
-    box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -54,10 +54,12 @@ body {
 
 /* Floating Toggle Button */
 .mobile-toggle {
-    display: none; /* Hidden on desktop */
+    display: none;
+    /* Hidden on desktop */
     position: fixed;
     top: 20px;
-    right: 20px; /* Right side */
+    right: 20px;
+    /* Right side */
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -161,6 +163,67 @@ h1 {
     border-radius: 4px;
 }
 
+/* Season Indicator */
+.season-indicator {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.season-indicator h4 {
+    margin: 0 0 12px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+
+.season-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(88, 194, 255, 0.1), rgba(248, 194, 122, 0.1));
+    border-radius: 8px;
+}
+
+#season-icon {
+    font-size: 1.5rem;
+    animation: seasonPulse 3s ease-in-out infinite;
+}
+
+@keyframes seasonPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.season-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.season-info .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.season-info .info-row span:last-child {
+    color: var(--accent);
+    font-weight: 500;
+}
+
 button#btn-reset {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-main);
@@ -185,15 +248,16 @@ button#btn-reset:hover {
     .sidebar {
         position: fixed;
         top: auto;
-        bottom: 80px; /* Above controls/bottom area */
+        bottom: 80px;
+        /* Above controls/bottom area */
         left: 50%;
         transform: translateX(-50%) translateY(20px);
         width: 90%;
         max-height: 60vh;
-        
+
         /* Hidden by default */
         opacity: 0;
-        pointer-events: none; 
+        pointer-events: none;
         visibility: hidden;
     }
 
@@ -222,7 +286,8 @@ button#btn-reset:hover {
 .back-to-home {
     position: fixed;
     top: 20px;
-    left: 20px; /* Move to left to avoid conflict with toggle */
+    left: 20px;
+    /* Move to left to avoid conflict with toggle */
     padding: 8px 16px;
     background: rgba(20, 30, 50, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -234,13 +299,14 @@ button#btn-reset:hover {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     transition: all 0.2s ease;
-    z-index: 9999; /* Ensure it's on top */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 9999;
+    /* Ensure it's on top */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .back-to-home:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.6);
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
