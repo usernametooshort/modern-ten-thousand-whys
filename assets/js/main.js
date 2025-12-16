@@ -115,6 +115,8 @@ const SkyShader = {
 // --- Scene Setup ---
 const canvas = document.getElementById('bg-canvas');
 const scene = new THREE.Scene();
+// Add a test background to verify renderer - should show blue if sky fails
+scene.background = new THREE.Color(0x87CEEB); // Light blue sky fallback
 
 // Camera
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000000);
