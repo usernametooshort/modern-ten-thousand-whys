@@ -38,14 +38,16 @@
 html {
     scroll-behavior: smooth;
     font-size: 16px;
+    /* Fallback during Three.js loading */
+    background: var(--bg-deep);
 }
 
 body {
     margin: 0;
     font-family: var(--font-sans);
-    background-color: var(--bg-deep);
-    /* Fallback background so it's never black */
-    background: linear-gradient(160deg, #050b14 0%, #0a1122 100%);
+    /* IMPORTANT: Transparent to show Three.js sky canvas behind */
+    background-color: transparent;
+    background: transparent;
     color: var(--text-primary);
     overflow-x: hidden;
     line-height: 1.6;
