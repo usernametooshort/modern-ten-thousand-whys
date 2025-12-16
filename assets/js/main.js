@@ -3,116 +3,9 @@ console.log('[MAIN.JS] Script starting...');
 import * as THREE from 'three';
 console.log('[MAIN.JS] THREE imported:', !!THREE);
 
-// --- Sky Shader definition (Inlined for reliability) ---
-const Sky = function () {
-    const shader = SkyShader;
-    const material = new THREE.ShaderMaterial({
-        name: 'SkyShader',
-        fragmentShader: shader.fragmentShader,
-        vertexShader: shader.vertexShader,
-        uniforms: THREE.UniformsUtils.clone(shader.uniforms),
-        side: THREE.BackSide,
-        depthWrite: false
-    });
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.isSky = true;
-    return mesh;
-};
-
-const SkyShader = {
-    uniforms: {
-        'turbidity': { value: 10 },
-        'rayleigh': { value: 2 },
-        'mieCoefficient': { value: 0.005 },
-        'mieDirectionalG': { value: 0.8 },
-        'sunPosition': { value: new THREE.Vector3() },
-        'up': { value: new THREE.Vector3(0, 1, 0) }
-    },
-    vertexShader: `
-        uniform vec3 sunPosition;
-        uniform float rayleigh;
-        uniform float turbidity;
-        uniform float mieCoefficient;
-        uniform vec3 up;
-
-        varying vec3 vWorldPosition;
-        varying vec3 vSunDirection;
-        varying float vSunfade;
-        varying vec3 vBetaR;
-        varying vec3 vBetaM;
-        varying float vSunE;
-
-        const float e = 2.71828182845904523536028747135266249775724709369995957;
-        const float pi = 3.141592653589793238462643383279502884197169;
-        const vec3 lambda = vec3( 680E-9, 550E-9, 450E-9 );
-        const vec3 totalRayleigh = vec3( 5.80454299154567e-6, 1.35629114198456e-5, 3.02659024688248e-5 );
-        const float v = 4.0;
-        const vec3 K = vec3( 0.686, 0.678, 0.666 );
-        const float MieConst = 1.8399918514433938E14;
-        const float cutoffAngle = pi / 1.95;
-        const float steepness = 1.5;
-        const float EE = 1000.0;
-
-        float sunIntensity( float zenithAngleCos ) {
-            return EE * max( 0.0, 1.0 - pow( e, -( ( cutoffAngle - acos( zenithAngleCos ) ) / steepness ) ) );
-        }
-
-        vec3 totalMie( float T ) {
-            float c = ( 0.2 * T ) * 10E-18;
-            return 0.434 * c * pi * pow( ( 2.0 * pi ) / lambda, vec3( v - 2.0 ) ) * K;
-        }
-
-        void main() {
-            vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
-            vWorldPosition = worldPosition.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-            gl_Position.z = gl_Position.w; // force sky to far plane
-            vSunDirection = normalize( sunPosition );
-            vSunE = sunIntensity( dot( vSunDirection, up ) );
-            vSunfade = 1.0 - clamp( 1.0 - exp( ( sunPosition.y / 450000.0 ) ), 0.0, 1.0 );
-            float rayleighCoefficient = rayleigh - ( 1.0 * ( 1.0 - vSunfade ) );
-            vBetaR = totalRayleigh * rayleighCoefficient;
-            vBetaM = totalMie( turbidity ) * mieCoefficient;
-        }
-    `,
-    fragmentShader: `
-        varying vec3 vWorldPosition;
-        varying vec3 vSunDirection;
-        varying float vSunfade;
-        varying vec3 vBetaR;
-        varying vec3 vBetaM;
-        varying float vSunE;
-        uniform float mieDirectionalG;
-        uniform vec3 up;
-        const float pi = 3.141592653589793238462643383279502884197169;
-
-        float rayleighPhase( float cosTheta ) {
-            return ( 3.0 / ( 16.0 * pi ) ) * ( 1.0 + pow( cosTheta, 2.0 ) );
-        }
-
-        float hgPhase( float cosTheta, float g ) {
-            float g2 = pow( g, 2.0 );
-            float inverse = 1.0 / pow( 1.0 - 2.0 * g * cosTheta + g2, 1.5 );
-            return ( 1.0 / ( 4.0 * pi ) ) * ( ( 1.0 - g2 ) * inverse );
-        }
-
-        void main() {
-            vec3 direction = normalize( vWorldPosition - cameraPosition );
-            float cosTheta = dot( direction, vSunDirection );
-            float rPhase = rayleighPhase( cosTheta * 0.5 + 0.5 );
-            vec3 betaRTheta = vBetaR * rPhase;
-            float mPhase = hgPhase( cosTheta, mieDirectionalG );
-            vec3 betaMTheta = vBetaM * mPhase;
-            vec3 Lin = pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * ( 1.0 - exp( - ( vBetaR + vBetaM ) ) ), vec3( 1.5 ) );
-            Lin *= mix( vec3( 1.0 ), pow( vSunE * ( ( betaRTheta + betaMTheta ) / ( vBetaR + vBetaM ) ) * ( 1.0 - exp( - ( vBetaR + vBetaM ) ) ), vec3( 0.5 ) ), clamp( pow( 1.0 - dot( up, vSunDirection ), 5.0 ), 0.0, 1.0 ) );
-            vec3 finalColor = Lin;
-            // Tone mapping approximation
-            finalColor = vec3( 1.0 ) - exp( - finalColor );
-            gl_FragColor = vec4( finalColor, 1.0 );
-        }
-    `
-};
+// Import Sky from Three.js addons CDN
+import { Sky } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js';
+console.log('[MAIN.JS] Sky imported:', !!Sky);
 
 // --- Scene Setup ---
 const canvas = document.getElementById('bg-canvas');
@@ -120,8 +13,7 @@ console.log('[CANVAS] Element:', canvas);
 console.log('[CANVAS] Size:', canvas?.width, canvas?.height, 'Client:', canvas?.clientWidth, canvas?.clientHeight);
 
 const scene = new THREE.Scene();
-// Add a test background to verify renderer - should show blue if sky fails
-scene.background = new THREE.Color(0x87CEEB); // Light blue sky fallback
+// No scene.background needed - Sky will provide it
 
 // Camera
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000000);
@@ -136,18 +28,17 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0; // Increased from 0.5 for brighter sky
+renderer.toneMappingExposure = 0.5; // Slightly darker for realistic sky
 
 console.log('[RENDERER] Size:', renderer.getSize(new THREE.Vector2()));
 console.log('[RENDERER] WebGL Context:', renderer.getContext());
 console.log('[RENDERER] Canvas after init:', renderer.domElement.width, renderer.domElement.height);
 
-// --- 1. Realistic Sky Setup ---
+// --- 1. Realistic Sky Setup (Using Official Three.js Sky) ---
 const sky = new Sky();
 sky.scale.setScalar(450000);
-// TEMPORARY: Comment out to test if scene.background shows
-// scene.add(sky);
-console.log('[DEBUG] Sky NOT added to scene - testing scene.background');
+scene.add(sky);
+console.log('[SKY] Added to scene');
 
 const sun = new THREE.Vector3();
 const skyUniforms = sky.material.uniforms;
