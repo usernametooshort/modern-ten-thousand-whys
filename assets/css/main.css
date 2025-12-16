@@ -83,9 +83,11 @@ h1 {
     font-weight: 800;
     letter-spacing: -0.02em;
     background: linear-gradient(135deg, #fff 0%, var(--text-secondary) 100%);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+    /* NANO BANANA PRO: Ensure readability on bright sky */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
 h2 {
@@ -267,6 +269,8 @@ a {
     max-width: 800px;
     padding: 20px;
     z-index: 2;
+    /* NANO BANANA PRO: Text shadow for adaptive sky readability */
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .hero p {
@@ -275,6 +279,8 @@ a {
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .hero-cta-group {

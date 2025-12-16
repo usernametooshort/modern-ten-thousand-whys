@@ -1519,11 +1519,10 @@ void main() {
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         });
 
-        window.addEventListener('click', (e) => {
-            if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
-
-            this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        // NANO BANANA PRO: Unified pointer handler for both click and touch
+        const handlePointerSelect = (clientX, clientY) => {
+            this.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             this.raycaster.setFromCamera(this.mouse, this.camera);
 
             const meshes = this.planets.map(p => p.mesh);
@@ -1532,9 +1531,45 @@ void main() {
             if (intersects.length > 0) {
                 const hit = intersects[0].object;
                 const pData = this.planets.find(p => p.mesh === hit);
-                if (pData) this.showInfo(pData.data);
+                if (pData) {
+                    this.showInfo(pData.data);
+                    // On mobile, also open the info panel
+                    const panel = document.querySelector('.info-panel');
+                    if (panel) panel.classList.add('open');
+                }
             }
+        };
+
+        // Mouse click event
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
+            handlePointerSelect(e.clientX, e.clientY);
         });
+
+        // Touch event for mobile (with tap detection)
+        let touchStartTime = 0;
+        let touchStartPos = { x: 0, y: 0 };
+
+        window.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (e.target.closest('.controls') || e.target.closest('.info-panel')) return;
+
+            const touchDuration = Date.now() - touchStartTime;
+            const touch = e.changedTouches[0];
+            const moveDistance = Math.sqrt(
+                Math.pow(touch.clientX - touchStartPos.x, 2) +
+                Math.pow(touch.clientY - touchStartPos.y, 2)
+            );
+
+            // Only trigger if it's a quick tap (< 300ms) and didn't move much (< 20px)
+            if (touchDuration < 300 && moveDistance < 20) {
+                handlePointerSelect(touch.clientX, touch.clientY);
+            }
+        }, { passive: true });
 
         // Language Change Event
         window.addEventListener('languageChanged', () => {
