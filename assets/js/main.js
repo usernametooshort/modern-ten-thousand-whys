@@ -215,8 +215,10 @@ let weatherState = {
 
 async function fetchWeather(lat, lon) {
     try {
+        console.log('[Weather] Fetching for:', lat, lon);
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code,is_day,cloud_cover&daily=sunrise,sunset&timezone=auto`);
         const data = await response.json();
+        console.log('[Weather] API Response:', data);
 
         if (data.current) {
             weatherState.code = data.current.weather_code;
@@ -237,6 +239,8 @@ async function fetchWeather(lat, lon) {
                 weatherState.sunrise = new Date(data.daily.sunrise[0]);
                 weatherState.sunset = new Date(data.daily.sunset[0]);
             }
+
+            console.log('[Weather] State updated:', weatherState);
         }
         updateEnvironment();
     } catch (e) {
@@ -349,6 +353,8 @@ function updateEnvironment() {
     let sinElevation = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad);
     let elevation = THREE.MathUtils.radToDeg(Math.asin(sinElevation));
 
+    console.log('[Sky] Before adjustment - elevation:', elevation, 'isDay:', weatherState.isDay);
+
     // FORCE DAY: If API says is_day=1, ensure sun is well above horizon to show blue sky.
     // If we rely only on calculated elevation, it might be 2 degrees (sunrise) which looks dark.
     // We force a minimum elevation of 15 degrees for a "Clear Day" look.
@@ -370,6 +376,9 @@ function updateEnvironment() {
     // CRITICAL FIX: Sky shader expects sunPosition to have magnitude matching the skybox size (450000)
     // Passing a unit vector (len=1) causes it to think sun is at 0 height (Horizon/Dark).
     sky.material.uniforms['sunPosition'].value.copy(sun).multiplyScalar(450000);
+
+    console.log('[Sky] After adjustment - elevation:', elevation, 'phi:', phi, 'azimuth:', azimuth);
+    console.log('[Sky] Sun position:', sky.material.uniforms['sunPosition'].value);
 
 
     // 2. Sky Appearance (Weather)
