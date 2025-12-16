@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-// --- Optimized Shaders ---
+// --- NANO BANANA PRO: Advanced Star Shaders ---
 
 const StarVertexShader = `
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
+varying float vFresnel;
 
 void main() {
     vUv = uv;
@@ -16,6 +20,10 @@ void main() {
     
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vViewPosition = -mvPosition.xyz;
+    
+    // Pre-compute fresnel for limb darkening
+    vec3 viewDir = normalize(-mvPosition.xyz);
+    vFresnel = dot(vNormal, viewDir);
     
     gl_Position = projectionMatrix * mvPosition;
 }
@@ -26,48 +34,139 @@ varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vPosition;
 varying vec3 vViewPosition;
+varying float vFresnel;
+
 uniform float time;
 uniform vec3 colorA;
 uniform vec3 colorB;
 uniform float noiseScale;
+uniform float limbDarkening;
+uniform float coronaIntensity;
 
-// Simplified Noise
-float hash(float n) { return fract(sin(n) * 43758.5453123); }
-float noise(vec3 x) {
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-    f = f * f * (3.0 - 2.0 * f);
-    float n = p.x + p.y * 57.0 + 113.0 * p.z;
-    return mix(mix(mix( hash(n + 0.0), hash(n + 1.0), f.x),
-                   mix( hash(n + 57.0), hash(n + 58.0), f.x), f.y),
-               mix(mix( hash(n + 113.0), hash(n + 114.0), f.x),
-                   mix( hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
+// Advanced 3D Simplex Noise
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+float snoise(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    
+    vec3 i = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+        
+    float n_ = 0.142857142857;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+    
+    vec4 x = x_ *ns.x + ns.yyyy;
+    vec4 y = y_ *ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+    
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x;
+    p1 *= norm.y;
+    p2 *= norm.z;
+    p3 *= norm.w;
+    
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+}
+
+// Fractal Brownian Motion for turbulence
+float fbm(vec3 p) {
+    float f = 0.0;
+    float amplitude = 0.5;
+    float frequency = 1.0;
+    for(int i = 0; i < 5; i++) {
+        f += amplitude * snoise(p * frequency);
+        frequency *= 2.0;
+        amplitude *= 0.5;
+    }
+    return f;
 }
 
 void main() {
-    // Animate noise with time
+    // Multi-octave plasma turbulence
     vec3 p = vPosition * noiseScale;
-    float n = noise(p + time * 0.5);
-    float n2 = noise(p * 2.0 - time * 0.2);
+    float slowTime = time * 0.15;
+    float fastTime = time * 0.4;
     
-    float total = n * 0.7 + n2 * 0.3;
+    // Large-scale convection cells
+    float cells = fbm(p * 0.5 + slowTime);
     
-    // Mix colors based on noise
-    vec3 color = mix(colorA, colorB, total);
+    // Medium turbulence
+    float turb1 = fbm(p * 1.5 + vec3(slowTime, 0.0, slowTime));
     
-    // Heat glow
-    color += vec3(0.2) * pow(total, 2.0);
-
-    // Fresnel Rim (Atmosphere)
-    vec3 viewDir = normalize(vViewPosition);
-    vec3 normal = normalize(vNormal);
-    float fresnel = pow(1.0 - max(0.0, dot(normal, viewDir)), 2.5);
+    // Fast small-scale granulation
+    float granulation = snoise(p * 4.0 + fastTime) * 0.3;
     
-    color += colorA * fresnel * 1.5;
+    // Combine for plasma effect
+    float plasma = cells * 0.5 + turb1 * 0.35 + granulation * 0.15;
+    plasma = plasma * 0.5 + 0.5; // Normalize to 0-1
     
-    gl_FragColor = vec4(color, 1.0);
+    // Hot spots (solar flares hint)
+    float hotspots = pow(max(0.0, snoise(p * 2.0 + slowTime * 2.0)), 3.0);
+    
+    // Color mixing with temperature gradient
+    vec3 coolColor = colorB;
+    vec3 hotColor = colorA;
+    vec3 superHot = vec3(1.0, 1.0, 0.9); // White-hot for peaks
+    
+    vec3 baseColor = mix(coolColor, hotColor, plasma);
+    baseColor = mix(baseColor, superHot, hotspots * 0.5);
+    
+    // LIMB DARKENING - realistic stellar edge darkening
+    float limbFactor = pow(max(0.0, vFresnel), limbDarkening);
+    baseColor *= 0.3 + 0.7 * limbFactor;
+    
+    // Corona glow at edges
+    float corona = pow(1.0 - max(0.0, vFresnel), 3.0);
+    vec3 coronaColor = mix(hotColor, vec3(1.0, 0.9, 0.7), 0.5);
+    baseColor += coronaColor * corona * coronaIntensity;
+    
+    // Intensity boost for stellar brightness
+    baseColor *= 1.5;
+    
+    gl_FragColor = vec4(baseColor, 1.0);
 }
 `;
+
 
 // --- Configuration with I18n Keys ---
 
@@ -77,8 +176,8 @@ const STAGES = [
         nameKey: 'star_stage_nebula',
         descKey: 'star_desc_nebula',
         temperature: '~ 10-100 K',
-        starRadius: 0.1, 
-        colorA: 0x000000, 
+        starRadius: 0.1,
+        colorA: 0x000000,
         colorB: 0x112233,
         noiseScale: 1.0,
         nebulaOp: 0.8,
@@ -152,7 +251,7 @@ const STAGES = [
         starRadius: 10.0, // Huge
         colorA: 0xff2200,
         colorB: 0x660000,
-        noiseScale: 0.8, 
+        noiseScale: 0.8,
         nebulaOp: 0.0,
         nebulaScale: 0.0,
         jetOp: 0.0,
@@ -176,7 +275,7 @@ const STAGES = [
         starRadius: 1.0, // Collapsed
         colorA: 0xffffff,
         colorB: 0xaaccff,
-        noiseScale: 5.0, 
+        noiseScale: 5.0,
         nebulaOp: 0.0,
         nebulaScale: 0.0,
         jetOp: 0.0,
@@ -201,11 +300,11 @@ const STAGES = [
         colorA: 0x88ffff, // Blue-white
         colorB: 0x0000ff,
         noiseScale: 0.1,
-        nebulaOp: 0.3, 
+        nebulaOp: 0.3,
         nebulaScale: 2.5,
         jetOp: 1.0, // Strong beams
-        diskOp: 0.1, 
-        shockScl: 40.0, 
+        diskOp: 0.1,
+        shockScl: 40.0,
         shockOp: 0.0,
         pulsar: true,
         glowSize: 4.0, // Large glow relative to size
@@ -225,11 +324,11 @@ class StarLifecycleApp {
         this.container = document.getElementById('scene-canvas');
         this.scene = new THREE.Scene();
         this.clock = new THREE.Clock();
-        
+
         this.stageIndex = 0;
         this.isPlaying = false;
         this.autoTimer = 0;
-        
+
         // Interpolation State
         this.state = {
             radius: 0.1,
@@ -244,7 +343,7 @@ class StarLifecycleApp {
             shockOp: 0.0,
             glowSize: 1.0
         };
-        
+
         this.targetState = null;
 
         this.init();
@@ -253,33 +352,51 @@ class StarLifecycleApp {
     init() {
         this.initRenderer();
         this.initCamera();
+        this.initPostProcessing();  // NANO BANANA PRO: Initialize bloom after camera
         this.initControls();
         this.initLights();
         this.initObjects();
         this.initUI();
-        
+
         // Initialize first stage
         this.setStage(0, false);
-        
+
         window.addEventListener('resize', () => this.onResize());
         this.renderer.setAnimationLoop(() => this.render());
     }
 
     initRenderer() {
-        this.renderer = new THREE.WebGLRenderer({ 
-            canvas: this.container, 
-            antialias: true, 
-            alpha: true 
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.container,
+            antialias: true,
+            alpha: true
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
     }
 
     initCamera() {
-        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
         this.camera.position.set(0, 10, 45);
         this.camera.lookAt(0, 0, 0);
+    }
+
+    // NANO BANANA PRO: Bloom Post-Processing for stellar glow
+    initPostProcessing() {
+        this.composer = new EffectComposer(this.renderer);
+        const renderPass = new RenderPass(this.scene, this.camera);
+        this.composer.addPass(renderPass);
+
+        this.bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.5,   // strength
+            0.4,   // radius
+            0.85   // threshold
+        );
+        this.composer.addPass(this.bloomPass);
     }
 
     initControls() {
@@ -302,7 +419,9 @@ class StarLifecycleApp {
             time: { value: 0 },
             colorA: { value: new THREE.Color() },
             colorB: { value: new THREE.Color() },
-            noiseScale: { value: 1.0 }
+            noiseScale: { value: 1.0 },
+            limbDarkening: { value: 0.6 },     // NANO BANANA PRO: Realistic limb darkening
+            coronaIntensity: { value: 0.5 }    // Corona glow at edges
         };
         const starGeo = new THREE.SphereGeometry(1, 128, 128);
         const starMat = new THREE.ShaderMaterial({
@@ -314,10 +433,10 @@ class StarLifecycleApp {
         this.scene.add(this.starMesh);
 
         const glowMap = this.createGlowTexture();
-        const glowMat = new THREE.SpriteMaterial({ 
-            map: glowMap, 
-            color: 0xffffff, 
-            transparent: true, 
+        const glowMat = new THREE.SpriteMaterial({
+            map: glowMap,
+            color: 0xffffff,
+            transparent: true,
             opacity: 0.5,
             blending: THREE.AdditiveBlending,
             depthWrite: false
@@ -332,22 +451,22 @@ class StarLifecycleApp {
         const pPos = new Float32Array(pCount * 3);
         const pSizes = new Float32Array(pCount);
         const cloudMap = this.createCloudTexture();
-        
-        for(let i=0; i<pCount; i++) {
+
+        for (let i = 0; i < pCount; i++) {
             const r = 5 + Math.pow(Math.random(), 1.5) * 35;
             const branchAngle = (Math.random() * Math.PI * 2);
             const spiralAngle = r * 0.2;
             const theta = branchAngle + spiralAngle;
-            
+
             const spread = 2.0;
-            pPos[i*3] = r * Math.cos(theta) + (Math.random()-0.5)*spread;
-            pPos[i*3+1] = (Math.random()-0.5) * (r * 0.2);
-            pPos[i*3+2] = r * Math.sin(theta) + (Math.random()-0.5)*spread;
+            pPos[i * 3] = r * Math.cos(theta) + (Math.random() - 0.5) * spread;
+            pPos[i * 3 + 1] = (Math.random() - 0.5) * (r * 0.2);
+            pPos[i * 3 + 2] = r * Math.sin(theta) + (Math.random() - 0.5) * spread;
             pSizes[i] = Math.random() * 2.0 + 0.5;
         }
         pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
         pGeo.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
-        
+
         const pMat = new THREE.PointsMaterial({
             color: 0x88ccff,
             size: 1.0,
@@ -358,7 +477,7 @@ class StarLifecycleApp {
             map: cloudMap,
             sizeAttenuation: true
         });
-        
+
         this.nebula = new THREE.Points(pGeo, pMat);
         this.scene.add(this.nebula);
 
@@ -419,13 +538,13 @@ class StarLifecycleApp {
         const count = 3000;
         const geo = new THREE.BufferGeometry();
         const pos = new Float32Array(count * 3);
-        for(let i=0; i<count; i++) {
+        for (let i = 0; i < count; i++) {
             const r = 800 + Math.random() * 400;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
-            pos[i*3] = r * Math.sin(phi) * Math.cos(theta);
-            pos[i*3+1] = r * Math.cos(phi);
-            pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+            pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            pos[i * 3 + 1] = r * Math.cos(phi);
+            pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
         }
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         const mat = new THREE.PointsMaterial({
@@ -438,13 +557,13 @@ class StarLifecycleApp {
         const canvas = document.createElement('canvas');
         canvas.width = 512; canvas.height = 512;
         const ctx = canvas.getContext('2d');
-        const g = ctx.createRadialGradient(256,256,0,256,256,256);
+        const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
         g.addColorStop(0, 'rgba(255,255,255,1)');
         g.addColorStop(0.2, 'rgba(255,255,255,0.4)');
         g.addColorStop(0.5, 'rgba(255,255,255,0.1)');
         g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g;
-        ctx.fillRect(0,0,512,512);
+        ctx.fillRect(0, 0, 512, 512);
         return new THREE.CanvasTexture(canvas);
     }
 
@@ -452,12 +571,12 @@ class StarLifecycleApp {
         const canvas = document.createElement('canvas');
         canvas.width = 128; canvas.height = 128;
         const ctx = canvas.getContext('2d');
-        const g = ctx.createRadialGradient(64,64,0,64,64,64);
+        const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
         g.addColorStop(0, 'rgba(255,255,255,1)');
         g.addColorStop(0.5, 'rgba(255,255,255,0.2)');
         g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g;
-        ctx.fillRect(0,0,128,128);
+        ctx.fillRect(0, 0, 128, 128);
         return new THREE.CanvasTexture(canvas);
     }
 
@@ -465,20 +584,20 @@ class StarLifecycleApp {
         const canvas = document.createElement('canvas');
         canvas.width = 128; canvas.height = 512;
         const ctx = canvas.getContext('2d');
-        const g = ctx.createLinearGradient(0,0,0,512);
+        const g = ctx.createLinearGradient(0, 0, 0, 512);
         g.addColorStop(0, 'rgba(255,255,255,0)');
         g.addColorStop(0.1, 'rgba(255,255,255,1)');
-        g.addColorStop(0.5, 'rgba(255,255,255,0.5)'); 
+        g.addColorStop(0.5, 'rgba(255,255,255,0.5)');
         g.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = g;
-        ctx.fillRect(0,0,128,512);
-        const g2 = ctx.createLinearGradient(0,0,128,0);
+        ctx.fillRect(0, 0, 128, 512);
+        const g2 = ctx.createLinearGradient(0, 0, 128, 0);
         g2.addColorStop(0, 'rgba(255,255,255,0)');
         g2.addColorStop(0.5, 'rgba(255,255,255,1)');
         g2.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.globalCompositeOperation = 'source-in';
         ctx.fillStyle = g2;
-        ctx.fillRect(0,0,128,512);
+        ctx.fillRect(0, 0, 128, 512);
         return new THREE.CanvasTexture(canvas);
     }
 
@@ -487,12 +606,12 @@ class StarLifecycleApp {
         canvas.width = 1024; canvas.height = 128;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = 'rgba(0,0,0,0)';
-        ctx.clearRect(0,0,1024,128);
-        for(let i=0; i<150; i++) {
+        ctx.clearRect(0, 0, 1024, 128);
+        for (let i = 0; i < 150; i++) {
             const x = Math.random() * 1024;
             const w = 50 + Math.random() * 200;
             const alpha = 0.1 + Math.random() * 0.4;
-            const g = ctx.createLinearGradient(x,0,x+w,0);
+            const g = ctx.createLinearGradient(x, 0, x + w, 0);
             g.addColorStop(0, `rgba(255,200,150,0)`);
             g.addColorStop(0.5, `rgba(255,200,150,${alpha})`);
             g.addColorStop(1, `rgba(255,200,150,0)`);
@@ -507,7 +626,7 @@ class StarLifecycleApp {
     setStage(index, animate = true) {
         this.stageIndex = index;
         const data = STAGES[index];
-        
+
         this.updateUI(data);
 
         this.targetState = {
@@ -525,9 +644,9 @@ class StarLifecycleApp {
             glowSize: data.glowSize
         };
 
-        if(!animate) {
+        if (!animate) {
             Object.keys(this.targetState).forEach(k => {
-                if(this.state[k] instanceof THREE.Color) {
+                if (this.state[k] instanceof THREE.Color) {
                     this.state[k].copy(this.targetState[k]);
                 } else {
                     this.state[k] = this.targetState[k];
@@ -535,7 +654,7 @@ class StarLifecycleApp {
             });
         } else {
             if (data.id === 'supernova') {
-                this.state.shockScl = 1.0; 
+                this.state.shockScl = 1.0;
             }
         }
     }
@@ -547,7 +666,7 @@ class StarLifecycleApp {
         document.getElementById('stage-title').textContent = get(data.nameKey);
         document.getElementById('stage-description').textContent = get(data.descKey);
         document.getElementById('stage-temp').textContent = data.temperature;
-        
+
         const facts = document.getElementById('stage-facts');
         facts.innerHTML = '';
         data.facts.forEach(f => {
@@ -574,11 +693,11 @@ class StarLifecycleApp {
             this.isPlaying = false;
             this.nextStage();
         });
-        
+
         document.getElementById('btn-prev').addEventListener('click', () => {
             this.isPlaying = false;
             let idx = this.stageIndex - 1;
-            if(idx < 0) idx = STAGES.length - 1;
+            if (idx < 0) idx = STAGES.length - 1;
             this.setStage(idx);
         });
 
@@ -613,7 +732,7 @@ class StarLifecycleApp {
         window.addEventListener('languageChanged', () => {
             const data = STAGES[this.stageIndex];
             this.updateUI(data);
-            
+
             const playBtn = document.getElementById('btn-play');
             if (playBtn) {
                 const key = this.isPlaying ? 'btn_stop' : 'btn_auto';
@@ -628,9 +747,9 @@ class StarLifecycleApp {
     }
 
     update(delta) {
-        if(this.isPlaying) {
+        if (this.isPlaying) {
             this.autoTimer += delta;
-            if(this.autoTimer > 5) {
+            if (this.autoTimer > 5) {
                 this.autoTimer = 0;
                 this.nextStage();
             }
@@ -641,7 +760,7 @@ class StarLifecycleApp {
         this.state.colorA.lerp(this.targetState.colorA, speed);
         this.state.colorB.lerp(this.targetState.colorB, speed);
         this.state.noiseScale = THREE.MathUtils.lerp(this.state.noiseScale, this.targetState.noiseScale, speed);
-        
+
         this.state.nebulaOp = THREE.MathUtils.lerp(this.state.nebulaOp, this.targetState.nebulaOp, speed);
         this.state.nebulaScl = THREE.MathUtils.lerp(this.state.nebulaScl, this.targetState.nebulaScl, speed);
         this.state.jetOp = THREE.MathUtils.lerp(this.state.jetOp, this.targetState.jetOp, speed);
@@ -661,15 +780,15 @@ class StarLifecycleApp {
         this.starUniforms.colorA.value.copy(this.state.colorA);
         this.starUniforms.colorB.value.copy(this.state.colorB);
         this.starUniforms.noiseScale.value = this.state.noiseScale;
-        
+
         this.starGlow.scale.setScalar(this.state.radius * 2.2 + this.state.glowSize);
         this.starGlow.material.color.copy(this.state.colorA);
-        
+
         if (this.targetState.pulsar) {
             const spinSpeed = 20.0;
-            this.starMesh.rotation.y += delta * spinSpeed; 
+            this.starMesh.rotation.y += delta * spinSpeed;
             this.jets.rotation.y = this.starMesh.rotation.y;
-            this.jets.rotation.z = Math.sin(this.clock.elapsedTime * 5) * 0.2; 
+            this.jets.rotation.z = Math.sin(this.clock.elapsedTime * 5) * 0.2;
         } else {
             this.starMesh.rotation.y += delta * 0.1;
             this.jets.rotation.y += delta * 0.1;
@@ -680,22 +799,22 @@ class StarLifecycleApp {
         this.starLight.intensity = this.state.radius * 0.8;
 
         this.nebula.visible = this.state.nebulaOp > 0.01;
-        if(this.nebula.visible) {
+        if (this.nebula.visible) {
             this.nebula.material.opacity = this.state.nebulaOp * 0.6;
             this.nebula.rotation.y += delta * 0.02;
-            const ns = Math.max(0.1, this.state.nebulaScl * 5.0); 
+            const ns = Math.max(0.1, this.state.nebulaScl * 5.0);
             this.nebula.scale.setScalar(ns);
         }
 
         this.disk.visible = this.state.diskOp > 0.01;
-        if(this.disk.visible) {
+        if (this.disk.visible) {
             this.disk.material.opacity = this.state.diskOp * 0.8;
             this.disk.rotation.z += delta * 0.8;
         }
 
         this.jets.visible = this.state.jetOp > 0.01;
-        if(this.jets.visible) {
-            const op = this.state.jetOp * (0.6 + Math.random()*0.4);
+        if (this.jets.visible) {
+            const op = this.state.jetOp * (0.6 + Math.random() * 0.4);
             this.jets.children.forEach(group => {
                 group.children.forEach(mesh => mesh.material.opacity = op);
             });
@@ -704,7 +823,7 @@ class StarLifecycleApp {
         }
 
         this.shockwave.visible = this.state.shockOp > 0.01;
-        if(this.shockwave.visible) {
+        if (this.shockwave.visible) {
             this.shockwave.scale.setScalar(this.state.shockScl);
             this.shockwave.material.opacity = this.state.shockOp;
         }
@@ -712,6 +831,7 @@ class StarLifecycleApp {
 
     onResize() {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.composer.setSize(window.innerWidth, window.innerHeight);
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
     }
@@ -720,7 +840,8 @@ class StarLifecycleApp {
         const delta = this.clock.getDelta();
         this.controls.update();
         this.update(delta);
-        this.renderer.render(this.scene, this.camera);
+        // NANO BANANA PRO: Use bloom compositor instead of direct render
+        this.composer.render();
     }
 }
 
