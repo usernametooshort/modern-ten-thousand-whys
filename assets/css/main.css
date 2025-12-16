@@ -86,8 +86,8 @@ h1 {
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    /* NANO BANANA PRO: Ensure readability on bright sky */
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+    /* Subtle glow instead of heavy shadow */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 
 h2 {
@@ -267,10 +267,14 @@ a {
 
 .hero-content {
     max-width: 800px;
-    padding: 20px;
+    padding: 30px 40px;
     z-index: 2;
-    /* NANO BANANA PRO: Text shadow for adaptive sky readability */
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+    /* Subtle glassmorphism backdrop for readability on any sky */
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .hero p {
@@ -279,8 +283,7 @@ a {
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .hero-cta-group {
