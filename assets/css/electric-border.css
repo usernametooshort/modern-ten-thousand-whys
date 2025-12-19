@@ -12,6 +12,10 @@
     border-radius: inherit;
     display: flex;
     overflow: visible;
+    /* Move common glass effects here for consistency */
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .electric-border-canvas {
@@ -76,7 +80,7 @@
 
 /* Hero specific adjustments */
 .hero-eb-wrapper {
-    max-width: min(90vw, 800px);
+    max-width: min(95vw, 800px);
     margin: 0 auto;
     border-radius: 24px;
     width: 100%;
