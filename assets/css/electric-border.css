@@ -73,13 +73,38 @@
 .electric-border-canvas {
     animation: eb-pulse calc(var(--eb-speed) * 2) infinite ease-in-out;
 }
+
 /* Hero specific adjustments */
 .hero-eb-wrapper {
-    max-width: fit-content;
+    max-width: min(90vw, 800px);
     margin: 0 auto;
     border-radius: 24px;
+    width: 100%;
 }
 
 .hero-eb-wrapper .electric-border-canvas {
     border-radius: 24px;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+    :root {
+        --eb-thickness: 1.5px;
+        /* Slightly thinner on small screens */
+    }
+
+    .hero-eb-wrapper {
+        max-width: calc(100% - 32px);
+        margin: 0 16px;
+    }
+
+    .catalog-experience {
+        padding: 20px !important;
+        /* Ensure enough space inside the border */
+    }
+
+    /* Ensure content doesn't overlap border */
+    .electric-border-content {
+        padding: 2px;
+    }
 }
