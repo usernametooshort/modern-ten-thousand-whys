@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="app_title">十万个为什么 · 沉浸式科学图鉴</title>
     <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/electric-border.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -49,15 +50,18 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-content animate-entry">
-            <p class="eyebrow" data-i18n="eyebrow">Modern Hundred Thousand Whys</p>
-            <h1 data-i18n="app_title">沉浸式科学图鉴</h1>
-            <p data-i18n="tagline">以天文、地理、物理为篇章，让每个问题都拥有电影级的可视化答案。</p>
+        <div class="electric-border-wrapper hero-eb-wrapper">
+            <div class="electric-border-canvas"></div>
+            <div class="hero-content animate-entry">
+                <p class="eyebrow" data-i18n="eyebrow">Modern Hundred Thousand Whys</p>
+                <h1 data-i18n="app_title">沉浸式科学图鉴</h1>
+                <p data-i18n="tagline">以天文、地理、物理为篇章，让每个问题都拥有电影级的可视化答案。</p>
 
-            <div class="hero-cta-group">
-                <a href="#catalog" class="cta-btn btn-primary" data-i18n="hero_cta_start">开始探索</a>
-                <a href="https://github.com/usernametooshort/modern-ten-thousand-whys" target="_blank"
-                    class="cta-btn btn-ghost">GitHub</a>
+                <div class="hero-cta-group">
+                    <a href="#catalog" class="cta-btn btn-primary" data-i18n="hero_cta_start">开始探索</a>
+                    <a href="https://github.com/usernametooshort/modern-ten-thousand-whys" target="_blank"
+                        class="cta-btn btn-ghost">GitHub</a>
+                </div>
             </div>
         </div>
 
@@ -146,32 +150,39 @@
                         <p class="chapter-intro" data-i18n="ch1_intro">穿梭太阳系与恒星演化过程，解析行星轨道、恒星喷流与宇宙能量。</p>
 
                         <div class="catalog-experiences">
-                            <article id="chapter-1-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs" data-i18n="exp_1_1_bread">天文篇 / 1.1</p>
-                                <h3><span data-i18n="exp_1_1_title">太阳系运动模型</span> <span class="version">v1.1</span>
-                                </h3>
-                                <p data-i18n="exp_1_1_desc">环绕视角观察八大行星的公转/自转与轨道关系。</p>
-                                <ul class="experience-meta">
-                                    <li><strong data-i18n="highlights">Highlights</strong> <span
-                                            data-i18n="exp_1_1_hl_val">多源光照 / 轨道开关</span>
-                                    </li>
-                                    <li><strong>Updated</strong> 2025-11-24</li>
-                                </ul>
-                                <a class="cta primary" href="solar-system/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-1-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs" data-i18n="exp_1_1_bread">天文篇 / 1.1</p>
+                                    <h3><span data-i18n="exp_1_1_title">太阳系运动模型</span> <span class="version">v1.1</span>
+                                    </h3>
+                                    <p data-i18n="exp_1_1_desc">环绕视角观察八大行星的公转/自转与轨道关系。</p>
+                                    <ul class="experience-meta">
+                                        <li><strong data-i18n="highlights">Highlights</strong> <span
+                                                data-i18n="exp_1_1_hl_val">多源光照 / 轨道开关</span>
+                                        </li>
+                                        <li><strong>Updated</strong> 2025-11-24</li>
+                                    </ul>
+                                    <a class="cta primary" href="solar-system/index.html" data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
 
-                            <article id="chapter-1-exp-2" class="catalog-experience">
-                                <p class="breadcrumbs" data-i18n="exp_1_2_bread">天文篇 / 1.2</p>
-                                <h3><span data-i18n="exp_1_2_title">恒星生命周期</span> <span class="version">v1.0</span></h3>
-                                <p data-i18n="exp_1_2_desc">在同一场景内切换星云、原恒星、主序星、红巨星直到黑洞。</p>
-                                <ul class="experience-meta">
-                                    <li><strong data-i18n="highlights">Highlights</strong> <span
-                                            data-i18n="exp_1_2_hl_val">粒子喷流 / 自动演化</span>
-                                    </li>
-                                    <li><strong>Released</strong> 2025-11-24</li>
-                                </ul>
-                                <a class="cta primary" href="star-life/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-1-exp-2" class="catalog-experience">
+                                    <p class="breadcrumbs" data-i18n="exp_1_2_bread">天文篇 / 1.2</p>
+                                    <h3><span data-i18n="exp_1_2_title">恒星生命周期</span> <span class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_1_2_desc">在同一场景内切换星云、原恒星、主序星、红巨星直到黑洞。</p>
+                                    <ul class="experience-meta">
+                                        <li><strong data-i18n="highlights">Highlights</strong> <span
+                                                data-i18n="exp_1_2_hl_val">粒子喷流 / 自动演化</span>
+                                        </li>
+                                        <li><strong>Released</strong> 2025-11-24</li>
+                                    </ul>
+                                    <a class="cta primary" href="star-life/index.html" data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
                         </div>
                     </article>
 
@@ -187,31 +198,41 @@
                         <p class="chapter-intro" data-i18n="ch2_intro">规划涵盖大气环流、板块构造与洋流互动，将结合地球球体与粒子可视化展现宏观循环。</p>
 
                         <div class="catalog-experiences">
-                            <article id="chapter-2-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs" data-i18n="exp_2_1_bread">地理篇 / 2.1</p>
-                                <h3><span data-i18n="exp_2_1_title">全球环流</span> <span class="version">Beta</span></h3>
-                                <p data-i18n="exp_2_1_desc">展示地球大气三圈模型与热力交换，使用粒子轨迹描绘信风变化。</p>
-                                <ul class="experience-meta">
-                                    <li><strong data-i18n="highlights">Highlights</strong> <span
-                                            data-i18n="exp_2_1_hl_val">动态粒子 / 昼夜光照</span>
-                                    </li>
-                                    <li><strong>Status</strong> Beta</li>
-                                </ul>
-                                <a class="cta primary" href="earth-atmosphere/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-2-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs" data-i18n="exp_2_1_bread">地理篇 / 2.1</p>
+                                    <h3><span data-i18n="exp_2_1_title">全球环流</span> <span class="version">Beta</span>
+                                    </h3>
+                                    <p data-i18n="exp_2_1_desc">展示地球大气三圈模型与热力交换，使用粒子轨迹描绘信风变化。</p>
+                                    <ul class="experience-meta">
+                                        <li><strong data-i18n="highlights">Highlights</strong> <span
+                                                data-i18n="exp_2_1_hl_val">动态粒子 / 昼夜光照</span>
+                                        </li>
+                                        <li><strong>Status</strong> Beta</li>
+                                    </ul>
+                                    <a class="cta primary" href="earth-atmosphere/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
 
-                            <article id="chapter-2-exp-2" class="catalog-experience">
-                                <p class="breadcrumbs" data-i18n="exp_2_2_bread">地理篇 / 2.2</p>
-                                <h3><span data-i18n="exp_2_2_title">板块构造</span> <span class="version">v1.0</span></h3>
-                                <p data-i18n="exp_2_2_desc">以 3D 地壳剖面对比张裂、汇聚与转换边界。</p>
-                                <ul class="experience-meta">
-                                    <li><strong data-i18n="highlights">Highlights</strong> <span
-                                            data-i18n="exp_2_2_hl_val">三种边界 / 震波演示</span>
-                                    </li>
-                                    <li><strong>Released</strong> 2025-11-26</li>
-                                </ul>
-                                <a class="cta primary" href="plate-tectonics/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-2-exp-2" class="catalog-experience">
+                                    <p class="breadcrumbs" data-i18n="exp_2_2_bread">地理篇 / 2.2</p>
+                                    <h3><span data-i18n="exp_2_2_title">板块构造</span> <span class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_2_2_desc">以 3D 地壳剖面对比张裂、汇聚与转换边界。</p>
+                                    <ul class="experience-meta">
+                                        <li><strong data-i18n="highlights">Highlights</strong> <span
+                                                data-i18n="exp_2_2_hl_val">三种边界 / 震波演示</span>
+                                        </li>
+                                        <li><strong>Released</strong> 2025-11-26</li>
+                                    </ul>
+                                    <a class="cta primary" href="plate-tectonics/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
 
                             <article id="chapter-2-exp-3" class="catalog-experience muted">
                                 <p class="breadcrumbs" data-i18n="exp_2_3_bread">地理篇 / 2.3</p>
@@ -232,18 +253,27 @@
                             <span class="pill status-soon" data-i18n="status_soon">筹备中</span>
                         </header>
                         <div class="catalog-experiences">
-                            <article id="chapter-3-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs">物理篇 / 3.1</p>
-                                <h3><span data-i18n="exp_3_1_title">弹性棒震动</span> <span class="version">Beta</span></h3>
-                                <p data-i18n="exp_3_1_desc">模拟可拉伸的弹性棒，调整弹性与阻尼。</p>
-                                <a class="cta primary" href="elasticity/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
-                            <article id="chapter-3-exp-5" class="catalog-experience">
-                                <p class="breadcrumbs">物理篇 / 3.5</p>
-                                <h3><span data-i18n="exp_3_5_title">高层火灾逃生</span> <span class="version">Beta</span></h3>
-                                <p data-i18n="exp_3_5_desc">模拟高层建筑火灾蔓延与人员疏散过程。</p>
-                                <a class="cta primary" href="high-rise-fire/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-3-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs">物理篇 / 3.1</p>
+                                    <h3><span data-i18n="exp_3_1_title">弹性棒震动</span> <span class="version">Beta</span>
+                                    </h3>
+                                    <p data-i18n="exp_3_1_desc">模拟可拉伸的弹性棒，调整弹性与阻尼。</p>
+                                    <a class="cta primary" href="elasticity/index.html" data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-3-exp-5" class="catalog-experience">
+                                    <p class="breadcrumbs">物理篇 / 3.5</p>
+                                    <h3><span data-i18n="exp_3_5_title">高层火灾逃生</span> <span class="version">Beta</span>
+                                    </h3>
+                                    <p data-i18n="exp_3_5_desc">模拟高层建筑火灾蔓延与人员疏散过程。</p>
+                                    <a class="cta primary" href="high-rise-fire/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
                             <article id="chapter-3-exp-2" class="catalog-experience muted">
                                 <h3>波粒交错 <span class="pill status-soon">Soon</span></h3>
                             </article>
@@ -260,30 +290,40 @@
                             <span class="pill status-live" data-i18n="status_live_count" data-count="3">已上线 3 个体验</span>
                         </header>
                         <div class="catalog-experiences">
-                            <article id="chapter-4-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs">计算机篇 / 4.1</p>
-                                <h3><span data-i18n="exp_4_1_title">LLM 原理可视化</span> <span class="version">v1.0</span>
-                                </h3>
-                                <p data-i18n="exp_4_1_desc">揭示 ChatGPT 等大模型背后的"单词接龙"机制。</p>
-                                <a class="cta primary" href="llm-visualization/index.html"
-                                    data-i18n="cta_enter">进入体验</a>
-                            </article>
-                            <article id="chapter-4-exp-2" class="catalog-experience">
-                                <p class="breadcrumbs">计算机篇 / 4.2</p>
-                                <h3><span data-i18n="exp_4_2_title">计算机的大脑 (CPU)</span> <span
-                                        class="version">v2.0</span></h3>
-                                <p data-i18n="exp_4_2_desc">通过 3D 可视化观察 CPU 的取指、译码和执行周期。</p>
-                                <a class="cta primary" href="binary-core/index.html?v=5#module-cpu"
-                                    data-i18n="cta_enter">进入体验</a>
-                            </article>
-                            <article id="chapter-4-exp-3" class="catalog-experience">
-                                <p class="breadcrumbs">计算机篇 / 4.3</p>
-                                <h3><span data-i18n="exp_4_3_title">机器的语言 (Binary)</span> <span
-                                        class="version">v1.0</span></h3>
-                                <p data-i18n="exp_4_3_desc">解密 0 和 1 的奥秘，将你的名字翻译成机器码。</p>
-                                <a class="cta primary" href="binary-core/index.html?v=5#module-binary"
-                                    data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-4-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs">计算机篇 / 4.1</p>
+                                    <h3><span data-i18n="exp_4_1_title">LLM 原理可视化</span> <span
+                                            class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_4_1_desc">揭示 ChatGPT 等大模型背后的"单词接龙"机制。</p>
+                                    <a class="cta primary" href="llm-visualization/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-4-exp-2" class="catalog-experience">
+                                    <p class="breadcrumbs">计算机篇 / 4.2</p>
+                                    <h3><span data-i18n="exp_4_2_title">计算机的大脑 (CPU)</span> <span
+                                            class="version">v2.0</span></h3>
+                                    <p data-i18n="exp_4_2_desc">通过 3D 可视化观察 CPU 的取指、译码和执行周期。</p>
+                                    <a class="cta primary" href="binary-core/index.html?v=5#module-cpu"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-4-exp-3" class="catalog-experience">
+                                    <p class="breadcrumbs">计算机篇 / 4.3</p>
+                                    <h3><span data-i18n="exp_4_3_title">机器的语言 (Binary)</span> <span
+                                            class="version">v1.0</span></h3>
+                                    <p data-i18n="exp_4_3_desc">解密 0 和 1 的奥秘，将你的名字翻译成机器码。</p>
+                                    <a class="cta primary" href="binary-core/index.html?v=5#module-binary"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
                         </div>
                     </article>
 
@@ -297,25 +337,39 @@
                             <span class="pill status-live" data-i18n="status_live_count" data-count="3">已上线 3 个体验</span>
                         </header>
                         <div class="catalog-experiences">
-                            <article id="chapter-5-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs">语言篇 / 5.1</p>
-                                <h3><span data-i18n="exp_5_1_title">德语形容词构建器</span> <span class="version">v1.0</span>
-                                </h3>
-                                <p data-i18n="exp_5_1_desc">3D 可视化德语形容词词尾变化规则。</p>
-                                <a class="cta primary" href="german-grammar/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
-                            <article id="chapter-5-exp-2" class="catalog-experience">
-                                <p class="breadcrumbs">语言篇 / 5.2</p>
-                                <h3><span data-i18n="exp_5_2_title">数学符号变换</span> <span class="version">v1.0</span></h3>
-                                <p data-i18n="exp_5_2_desc">掌握数学符号变换的核心规则，Minecraft 风格体验。</p>
-                                <a class="cta primary" href="math-transform/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
-                            <article id="chapter-5-exp-3" class="catalog-experience">
-                                <p class="breadcrumbs">语言篇 / 5.3</p>
-                                <h3><span data-i18n="exp_5_3_title">中文笔顺训练</span> <span class="version">v1.0</span></h3>
-                                <p data-i18n="exp_5_3_desc">通过摄像头追踪手指书写，AI 判定笔顺。</p>
-                                <a class="cta primary" href="stroke-order/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-5-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs">语言篇 / 5.1</p>
+                                    <h3><span data-i18n="exp_5_1_title">德语形容词构建器</span> <span
+                                            class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_5_1_desc">3D 可视化德语形容词词尾变化规则。</p>
+                                    <a class="cta primary" href="german-grammar/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-5-exp-2" class="catalog-experience">
+                                    <p class="breadcrumbs">语言篇 / 5.2</p>
+                                    <h3><span data-i18n="exp_5_2_title">数学符号变换</span> <span class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_5_2_desc">掌握数学符号变换的核心规则，Minecraft 风格体验。</p>
+                                    <a class="cta primary" href="math-transform/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-5-exp-3" class="catalog-experience">
+                                    <p class="breadcrumbs">语言篇 / 5.3</p>
+                                    <h3><span data-i18n="exp_5_3_title">中文笔顺训练</span> <span class="version">v1.0</span>
+                                    </h3>
+                                    <p data-i18n="exp_5_3_desc">通过摄像头追踪手指书写，AI 判定笔顺。</p>
+                                    <a class="cta primary" href="stroke-order/index.html" data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
                         </div>
                     </article>
 
@@ -329,13 +383,17 @@
                             <span class="pill status-live" data-i18n="status_live_count" data-count="3">已上线 3 个体验</span>
                         </header>
                         <div class="catalog-experiences">
-                            <article id="chapter-6-exp-1" class="catalog-experience">
-                                <p class="breadcrumbs">游戏篇 / 6.1</p>
-                                <h3><span data-i18n="exp_6_1_title">现代浮生记 2020-2025</span> <span
-                                        class="version">v1.0</span></h3>
-                                <p data-i18n="exp_6_1_desc">在 60 个月内通过倒买倒卖热门商品，实现财务自由。</p>
-                                <a class="cta primary" href="modern-life-game/index.html" data-i18n="cta_enter">进入体验</a>
-                            </article>
+                            <div class="electric-border-wrapper">
+                                <div class="electric-border-canvas"></div>
+                                <article id="chapter-6-exp-1" class="catalog-experience">
+                                    <p class="breadcrumbs">游戏篇 / 6.1</p>
+                                    <h3><span data-i18n="exp_6_1_title">现代浮生记 2020-2025</span> <span
+                                            class="version">v1.0</span></h3>
+                                    <p data-i18n="exp_6_1_desc">在 60 个月内通过倒买倒卖热门商品，实现财务自由。</p>
+                                    <a class="cta primary" href="modern-life-game/index.html"
+                                        data-i18n="cta_enter">进入体验</a>
+                                </article>
+                            </div>
                         </div>
                     </article>
 
@@ -348,6 +406,19 @@
         <a class="to-top" href="#top" aria-label="回到顶部">↑</a>
         <small data-i18n="footer_text">© 2025 十万个为什么 3D · 沉浸版</small>
     </footer>
+
+    <!-- Electric Border SVG Filter -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <filter id="electric-border-filter" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.03" numOctaves="2" seed="1" result="turbulence">
+                <animate attributeName="seed" from="1" to="100" dur="10s" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="10" xChannelSelector="R"
+                yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="0.5" result="blur" />
+            <feComposite in="SourceGraphic" operator="over" />
+        </filter>
+    </svg>
 
     <script src="assets/js/i18n.js?v=4"></script>
     <script type="module" src="assets/js/main.js"></script>

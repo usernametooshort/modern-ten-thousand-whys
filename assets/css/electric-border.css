@@ -1,0 +1,85 @@
+/* Electric Border Effect */
+:root {
+    --eb-color: #7df9ff;
+    --eb-thickness: 2px;
+    --eb-speed: 1s;
+    --eb-chaos: 0.5;
+}
+
+.electric-border-wrapper {
+    position: relative;
+    padding: var(--eb-thickness);
+    border-radius: inherit;
+    display: flex;
+    overflow: visible;
+}
+
+.electric-border-canvas {
+    position: absolute;
+    top: calc(-1 * var(--eb-thickness));
+    left: calc(-1 * var(--eb-thickness));
+    right: calc(-1 * var(--eb-thickness));
+    bottom: calc(-1 * var(--eb-thickness));
+    border: var(--eb-thickness) solid var(--eb-color);
+    border-radius: inherit;
+    pointer-events: none;
+    filter: url(#electric-border-filter);
+    box-shadow: 0 0 10px var(--eb-color), inset 0 0 5px var(--eb-color);
+    opacity: 0.8;
+    z-index: 1;
+}
+
+.electric-border-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    border-radius: inherit;
+    background: inherit;
+}
+
+/* SVG Filter Animation */
+@keyframes eb-turbulence {
+    0% {
+        baseFrequency: 0.01 0.05;
+    }
+
+    50% {
+        baseFrequency: 0.02 0.08;
+    }
+
+    100% {
+        baseFrequency: 0.01 0.05;
+    }
+}
+
+/* Note: baseFrequency cannot be animated via CSS reliably in all browsers. 
+   We will use a JS loop or a simpler fallback if needed. 
+   For now, we use a CSS variable for the displacement map scale to simulate chaos. */
+
+@keyframes eb-pulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+        box-shadow: 0 0 10px var(--eb-color), inset 0 0 5px var(--eb-color);
+    }
+
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 15px var(--eb-color), inset 0 0 8px var(--eb-color);
+    }
+}
+
+.electric-border-canvas {
+    animation: eb-pulse calc(var(--eb-speed) * 2) infinite ease-in-out;
+}
+/* Hero specific adjustments */
+.hero-eb-wrapper {
+    max-width: fit-content;
+    margin: 0 auto;
+    border-radius: 24px;
+}
+
+.hero-eb-wrapper .electric-border-canvas {
+    border-radius: 24px;
+}
