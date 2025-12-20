@@ -1,7 +1,8 @@
 /* Electric Border Effect */
 :root {
     --eb-color: #7df9ff;
-    --eb-thickness: 2px;
+    --eb-thickness: 0.125rem;
+    /* 2px */
     --eb-speed: 1s;
     --eb-chaos: 0.5;
 }
@@ -12,25 +13,23 @@
     border-radius: inherit;
     display: flex;
     overflow: visible;
-    /* Move common glass effects here for consistency */
     background: rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.3s ease;
 }
 
 .electric-border-canvas {
     position: absolute;
-    top: calc(-1 * var(--eb-thickness));
-    left: calc(-1 * var(--eb-thickness));
-    right: calc(-1 * var(--eb-thickness));
-    bottom: calc(-1 * var(--eb-thickness));
+    inset: calc(-1 * var(--eb-thickness));
     border: var(--eb-thickness) solid var(--eb-color);
     border-radius: inherit;
     pointer-events: none;
     filter: url(#electric-border-filter);
-    box-shadow: 0 0 10px var(--eb-color), inset 0 0 5px var(--eb-color);
+    box-shadow: 0 0 0.625rem var(--eb-color), inset 0 0 0.3125rem var(--eb-color);
     opacity: 0.8;
     z-index: 1;
+    animation: eb-pulse calc(var(--eb-speed) * 2) infinite ease-in-out;
 }
 
 .electric-border-content {
@@ -41,74 +40,42 @@
     background: inherit;
 }
 
-/* SVG Filter Animation */
-@keyframes eb-turbulence {
-    0% {
-        baseFrequency: 0.01 0.05;
-    }
-
-    50% {
-        baseFrequency: 0.02 0.08;
-    }
-
-    100% {
-        baseFrequency: 0.01 0.05;
-    }
-}
-
-/* Note: baseFrequency cannot be animated via CSS reliably in all browsers. 
-   We will use a JS loop or a simpler fallback if needed. 
-   For now, we use a CSS variable for the displacement map scale to simulate chaos. */
-
 @keyframes eb-pulse {
 
     0%,
     100% {
         opacity: 0.7;
-        box-shadow: 0 0 10px var(--eb-color), inset 0 0 5px var(--eb-color);
+        box-shadow: 0 0 0.625rem var(--eb-color), inset 0 0 0.3125rem var(--eb-color);
     }
 
     50% {
         opacity: 1;
-        box-shadow: 0 0 15px var(--eb-color), inset 0 0 8px var(--eb-color);
+        box-shadow: 0 0 1rem var(--eb-color), inset 0 0 0.5rem var(--eb-color);
     }
 }
 
-.electric-border-canvas {
-    animation: eb-pulse calc(var(--eb-speed) * 2) infinite ease-in-out;
+/* Hero specific adjustments - Mobile First */
+.hero-eb-wrapper {
+    width: 100%;
+    max-width: calc(100% - 2rem);
+    margin-inline: auto;
+    border-radius: 1.5rem;
 }
 
-/* Hero specific adjustments */
-.hero-eb-wrapper {
-    max-width: min(95vw, 800px);
-    margin: 0 auto;
-    border-radius: 24px;
-    width: 100%;
+@media (min-width: 48rem) {
+
+    /* 768px */
+    .hero-eb-wrapper {
+        max-width: 50rem;
+        /* 800px */
+    }
 }
 
 .hero-eb-wrapper .electric-border-canvas {
-    border-radius: 24px;
+    border-radius: 1.5rem;
 }
 
-/* Mobile Optimizations */
-@media (max-width: 600px) {
-    :root {
-        --eb-thickness: 1.5px;
-        /* Slightly thinner on small screens */
-    }
-
-    .hero-eb-wrapper {
-        max-width: calc(100% - 32px);
-        margin: 0 16px;
-    }
-
-    .catalog-experience {
-        padding: 20px !important;
-        /* Ensure enough space inside the border */
-    }
-
-    /* Ensure content doesn't overlap border */
-    .electric-border-content {
-        padding: 2px;
-    }
+/* Experience interactions */
+.electric-border-wrapper:has(.catalog-experience:hover) {
+    transform: translateY(-0.3125rem);
 }
