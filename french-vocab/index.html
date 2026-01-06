@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Französisch Vokabeltrainer - 100,000 Whys</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700;900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- Header / Teacher -->
+        <header>
+            <div class="teacher-avatar">👩‍🏫</div>
+            <h1>Französisch Vokabeltrainer</h1>
+            <p class="subtitle">Willkommen in meiner Klasse! Lassen Sie uns Vokabeln lernen.</p>
+
+            <div class="lang-toggles">
+                <button class="lang-btn" data-lang="zh">中文</button>
+                <button class="lang-btn active" data-lang="de">Deutsch</button>
+                <button class="lang-btn" data-lang="en">English</button>
+            </div>
+
+            <a href="../index.html"
+                style="display:block; margin-top:1rem; color:var(--text-secondary); text-decoration:none; font-size:0.8rem;">←
+                Back to Main Menu</a>
+        </header>
+
+        <!-- Game Screens -->
+        <div class="game-area">
+
+            <!-- 1. Start Screen -->
+            <div id="start-screen" class="screen card">
+                <div style="font-size:4rem; margin-bottom:1rem;">🇫🇷</div>
+                <h2 style="margin-bottom:1rem;">Unit 1 & 2 Challenge</h2>
+                <p style="color:var(--text-secondary); margin-bottom:2rem;">
+                    Testen Sie Ihr Wissen über Schulsachen, Zahlen und Lyon. <br>
+                    (Timed mode, 10s per word)
+                </p>
+                <button id="start-btn" class="btn-primary">Test Starten</button>
+            </div>
+
+            <!-- 2. Quiz Screen -->
+            <div id="quiz-screen" class="screen card hidden">
+                <div class="quiz-header">
+                    <span id="progress-text">1 / 20</span>
+                    <span id="score-display"></span>
+                </div>
+
+                <div class="progress-bar">
+                    <div id="timer-bar" class="progress-fill" style="width:100%"></div>
+                </div>
+
+                <div class="word-display">
+                    <span id="question-label" class="word-label">Wähle das französische Wort:</span>
+                    <div id="target-word" class="target-word">Ein Heft</div>
+                </div>
+
+                <div id="options-grid" class="options-grid">
+                    <!-- Buttons injected by JS -->
+                </div>
+            </div>
+
+            <!-- 3. Result Screen -->
+            <div id="result-screen" class="screen card hidden">
+                <h2 id="result-title" style="margin-bottom:2rem;">Test Complete</h2>
+
+                <div class="score-circle">
+                    <span id="final-score" class="score-number">85%</span>
+                    <span class="score-label">Score</span>
+                </div>
+
+                <div id="wrong-list" class="wrong-list">
+                    <!-- Wrong items here -->
+                </div>
+
+                <div class="mode-select">
+                    <button id="retry-btn" class="btn-primary hidden">Retry Mistakes</button>
+                    <button id="home-btn" class="btn-primary"
+                        style="background:transparent; border:1px solid #ffffff33;">Home</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
