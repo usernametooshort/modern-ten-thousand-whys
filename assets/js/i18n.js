@@ -59,7 +59,9 @@ const translations = {
         exp_5_3_desc: "通过摄像头追踪手指或触屏书写，学习汉字的正确笔顺。炸弹计时 + 水桶灭火的游戏化设计，支持基础字、常用字、HSK1 字库。",
         exp_5_3_hl_val: "手指追踪 / 触屏书写 / 笔顺校验 / 游戏化",
         exp_5_3_nav: "5.3 中文笔顺训练",
-
+        exp_5_4_nav: "5.4 法语词汇特训",
+        exp_5_4_title: "5.4 法语词汇特训",
+        exp_5_4_desc: "Unit 1 & 2 词汇挑战，直到完全掌握。",
         // Solar System Experience
         solar_planet_mercury: "水星",
         solar_planet_venus: "金星",
@@ -405,7 +407,9 @@ const translations = {
         exp_5_3_desc: "Learn correct Chinese character stroke order through camera finger tracking or touchscreen writing. Gamified design with bomb timer and water bucket. Supports basic, common, and HSK1 character sets.",
         exp_5_3_hl_val: "Finger Tracking / Touch Writing / Stroke Validation / Gamified",
         exp_5_3_nav: "5.3 Stroke Order",
-
+        exp_5_4_nav: "5.4 French Vocab",
+        exp_5_4_title: "5.4 French Vocab Drill",
+        exp_5_4_desc: "Unit 1 & 2 Vocabulary Challenge. Master school supplies, numbers, and Lyon context until 100% correct.",
         // Solar System Experience
         solar_title: "Solar System Model",
         solar_intro: "Explore planetary orbits and relative speeds",
@@ -751,7 +755,9 @@ const translations = {
         exp_5_3_desc: "Lerne die korrekte Strichreihenfolge chinesischer Schriftzeichen durch Kamera-Fingerverfolgung oder Touchscreen-Schreiben. Spielerisches Design mit Bomben-Timer und Wassereimer. Unterstützt Basis-, Alltags- und HSK1-Zeichensätze.",
         exp_5_3_hl_val: "Fingerverfolgung / Touch-Schreiben / Strichvalidierung / Spielerisch",
         exp_5_3_nav: "5.3 Strichreihenfolge",
-
+        exp_5_4_nav: "5.4 Französisch Vokabeln",
+        exp_5_4_title: "5.4 Französisch Vokabeltrainer",
+        exp_5_4_desc: "Unit 1 & 2 Vokabel-Challenge. Meistern Sie Schulsachen, Zahlen und Lyon-Wörter bis zu 100%.",
         // Solar System Experience
         solar_title: "Sonnensystem-Modell",
         solar_intro: "Erkunden Sie Planetenbahnen und relative Geschwindigkeiten",
