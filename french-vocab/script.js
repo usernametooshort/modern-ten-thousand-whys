@@ -8,21 +8,26 @@ class FrenchQuiz {
         this.score = 0;
         this.wrongAnswers = [];
         this.timer = null;
-        this.timeLeft = 15; // Increased for typing
+        this.timeLeft = 45; // Default extended
         this.isRetryMode = false;
         this.currentMode = 'spelling'; // 'spelling' or 'judgment'
+
+        // Scope Limit: Only use items from first 3 pages (ID < 158 for safe margin, let's say ID <= 157)
+        // Adjust ID limit based on user request "limit to these 3 pages". 
+        // Page 184 ends at ID 157.
+        this.fullData = vocabData.filter(item => item.id <= 157);
 
         // UI Text
         this.i18n = {
             zh: {
                 title: "法语词汇特训",
-                subtitle: "Challenge: 拼写与快速判断 (Unit 1 & 2)",
+                subtitle: "Challenge: 拼写与快速判断 (Unit 1 & 2 Limited)",
                 startBtn: "开始挑战",
                 retryBtn: "攻克错题 (直到100%)",
                 scoreLabel: "最终得分",
-                questionLabel_spelling: "请拼写出对应的单词：",
+                questionLabel_spelling: "请使用下方键盘拼写单词：",
                 questionLabel_judgment: "判断对错：",
-                nextBtn: "下一题",
+                nextBtn: "下一题 ➝",
                 timeOut: "时间到！",
                 resultTitle: "测试完成",
                 perfectScore: "完美！全部掌握！",
@@ -31,17 +36,17 @@ class FrenchQuiz {
                 wrong: "错误！正确答案：",
                 tf_true: "正确",
                 tf_false: "错误",
-                placeholder: "在此输入法语..."
+                placeholder: "点击按键输入..."
             },
             de: {
                 title: "Französisch Vokabeltrainer",
-                subtitle: "Challenge: Schreiben & Urteilen (Unit 1 & 2)",
+                subtitle: "Challenge: Schreiben & Urteilen (Unit 1 & 2 Limitiert)",
                 startBtn: "Test Starten",
                 retryBtn: "Fehler wiederholen (bis 100%)",
                 scoreLabel: "Endpunktzahl",
-                questionLabel_spelling: "Schreiben Sie das Wort:",
+                questionLabel_spelling: "Benutzen Sie die Tastatur:",
                 questionLabel_judgment: "Richtig oder Falsch?",
-                nextBtn: "Nächste Frage",
+                nextBtn: "Nächste Frage ➝",
                 timeOut: "Zeit abgelaufen!",
                 resultTitle: "Test beendet",
                 perfectScore: "Fantastisch! Alles richtig!",
@@ -50,17 +55,17 @@ class FrenchQuiz {
                 wrong: "Falsch! Lösung: ",
                 tf_true: "Richtig",
                 tf_false: "Falsch",
-                placeholder: "Französisch eingeben..."
+                placeholder: "Tippen Sie hier...",
             },
             en: {
                 title: "French Vocab Drill",
-                subtitle: "Challenge: Spelling & Judgment (Unit 1 & 2)",
+                subtitle: "Challenge: Spelling & Judgment (Limit Unit 1&2)",
                 startBtn: "Start Quiz",
                 retryBtn: "Retry Mistakes (Until 100%)",
                 scoreLabel: "Final Score",
-                questionLabel_spelling: "Type the French word:",
+                questionLabel_spelling: "Use the keyboard to type:",
                 questionLabel_judgment: "True or False?",
-                nextBtn: "Next Question",
+                nextBtn: "Next Question ➝",
                 timeOut: "Time's up!",
                 resultTitle: "Quiz Complete",
                 perfectScore: "Perfect! 100% Mastery!",
@@ -69,7 +74,7 @@ class FrenchQuiz {
                 wrong: "Wrong! Answer: ",
                 tf_true: "True",
                 tf_false: "False",
-                placeholder: "Type French here..."
+                placeholder: "Tap keys to type..."
             }
         };
 
@@ -77,15 +82,75 @@ class FrenchQuiz {
     }
 
     init() {
+        this.renderVirtualKeyboard();
         this.bindEvents();
         this.updateUIText();
+    }
 
-        // Expose insertChar globally for onclick inline handlers
-        window.insertChar = (char) => {
-            const input = document.getElementById('vocab-input');
-            input.value += char;
-            input.focus();
-        };
+    renderVirtualKeyboard() {
+        const keyboardContainer = document.getElementById('virtual-keyboard');
+        keyboardContainer.innerHTML = '';
+
+        const rows = [
+            ['à', 'â', 'ç', 'é', 'è', 'ê', 'ë', 'î', 'ï'],
+            ['ô', 'ù', 'û', 'ü', 'BACKSPACE'],
+            ['SPACE', 'ENTER'] // a simple layout + basic AZERTY letters?
+            // User asked for "Virtual keyboard" because native suggestions are annoying.
+            // Usually this means a FULL keyboard. Let's do a simple QWERTY/AZERTY hybrid or just ABCs?
+            // Let's implement a standard AZERTY-ish layout row by row for French.
+        ];
+
+        // Let's do a standard layout:
+        const azertyRows = [
+            "azertyuiop".split(''),
+            "qsdfghjklm".split(''),
+            "wxcvbn-".split(''), // + hyphen
+            ['é', 'è', 'à', 'ù', 'ç'], // Common accents
+            ['SPACE', 'BACKSPACE', 'ENTER']
+        ];
+
+        azertyRows.forEach(rowKeys => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'keyboard-row';
+            rowKeys.forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = 'key-btn';
+
+                if (key === 'SPACE') {
+                    btn.textContent = '⎵';
+                    btn.classList.add('key-space');
+                    btn.onclick = () => this.handleKeyInput(' ');
+                } else if (key === 'BACKSPACE') {
+                    btn.textContent = '⌫';
+                    btn.classList.add('key-backspace');
+                    btn.onclick = () => this.handleBackspace();
+                } else if (key === 'ENTER') {
+                    btn.textContent = '↵';
+                    btn.classList.add('key-enter');
+                    btn.onclick = () => this.handleSpellingSubmit();
+                } else {
+                    btn.textContent = key;
+                    if (['é', 'è', 'à', 'ù', 'ç'].includes(key)) {
+                        btn.classList.add('key-accent');
+                    }
+                    btn.onclick = () => this.handleKeyInput(key);
+                }
+                rowDiv.appendChild(btn);
+            });
+            keyboardContainer.appendChild(rowDiv);
+        });
+    }
+
+    handleKeyInput(char) {
+        const input = document.getElementById('vocab-input');
+        input.value += char;
+        // Keep focus away from input to prevent native keyboard? 
+        // Actually input is readonly, so it won't show keyboard anyway.
+    }
+
+    handleBackspace() {
+        const input = document.getElementById('vocab-input');
+        input.value = input.value.slice(0, -1);
     }
 
     bindEvents() {
@@ -100,12 +165,7 @@ class FrenchQuiz {
         document.getElementById('start-btn').addEventListener('click', () => this.startNewGame());
         document.getElementById('retry-btn').addEventListener('click', () => this.startRetryGame());
         document.getElementById('home-btn').addEventListener('click', () => this.showScreen('start-screen'));
-
-        // Input Submission
-        document.getElementById('submit-input-btn').addEventListener('click', () => this.handleSpellingSubmit());
-        document.getElementById('vocab-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleSpellingSubmit();
-        });
+        document.getElementById('next-question-btn').addEventListener('click', () => this.advanceQuestion());
 
         // TF Buttons
         document.getElementById('btn-true').addEventListener('click', () => this.handleJudgmentSubmit(true));
@@ -127,12 +187,14 @@ class FrenchQuiz {
         document.getElementById('btn-true').textContent = t.tf_true;
         document.getElementById('btn-false').textContent = t.tf_false;
         document.getElementById('vocab-input').placeholder = t.placeholder;
+        document.getElementById('next-question-btn').textContent = t.nextBtn;
     }
 
     // --- Game Logic ---
 
     startNewGame() {
-        this.questions = this.shuffleArray([...vocabData]);
+        // Use full filtered data
+        this.questions = this.shuffleArray([...this.fullData]);
         this.isRetryMode = false;
         this.resetGameState();
         this.startQuizLoop();
@@ -161,58 +223,52 @@ class FrenchQuiz {
     }
 
     prepareQuestion(questionObj) {
-        // Randomly choose mode: 60% Spelling (harder), 40% Judgment (faster)
+        // Mode logic: 60% Spelling
         const isSpelling = Math.random() > 0.4;
         this.currentMode = isSpelling ? 'spelling' : 'judgment';
 
         // Reset UI
         document.getElementById('input-container').classList.add('hidden');
         document.getElementById('tf-container').classList.add('hidden');
+        document.getElementById('feedback-area').classList.add('hidden'); // Hide container
         document.getElementById('feedback-msg').textContent = '';
-        document.getElementById('feedback-msg').className = 'feedback-msg hidden';
+        document.getElementById('feedback-msg').className = 'feedback-msg';
         document.getElementById('vocab-input').value = '';
         document.getElementById('vocab-input').classList.remove('error');
-        document.getElementById('secondary-clue').classList.add('hidden');
         document.getElementById('timer-bar').style.width = '100%';
 
         const t = this.i18n[this.currentLang];
 
-        // Get Prompt (Target Language)
+        // Prompt
         let promptText = "";
         if (this.currentLang === 'de') promptText = questionObj.german;
-        else if (this.currentLang === 'zh') promptText = questionObj.chinese;
-        else promptText = questionObj.english;
+        else if (this.currentLang === 'zh') promptText = questionObj.chinese || questionObj.german; // Fallback if no chinese
+        else promptText = questionObj.english || questionObj.german;
 
-        // Common Setup
         document.getElementById('progress-text').textContent = `${this.currentQuestionIndex + 1} / ${this.questions.length}`;
 
         if (this.currentMode === 'spelling') {
-            // SPELLING MODE
             document.getElementById('question-label').textContent = t.questionLabel_spelling;
             document.getElementById('target-word').textContent = promptText;
             document.getElementById('input-container').classList.remove('hidden');
-            document.getElementById('vocab-input').focus();
-            this.timeLeft = 15; // More time for typing
-
+            this.timeLeft = 45; // Increased time
         } else {
-            // JUDGMENT MODE
             document.getElementById('question-label').textContent = t.questionLabel_judgment;
 
-            // Decid if we show Correct or Wrong pair
             this.judgmentTargetIsCorrect = Math.random() > 0.5;
             let displayFrench = "";
 
             if (this.judgmentTargetIsCorrect) {
                 displayFrench = questionObj.french;
             } else {
-                // Pick a distractor
-                const distractor = vocabData.find(i => i.id !== questionObj.id && i.type === questionObj.type) || vocabData[0];
+                // Distractor from LIMITED scope (this.fullData)
+                const distractor = this.fullData.find(i => i.id !== questionObj.id && i.type === questionObj.type) || this.fullData[0];
                 displayFrench = distractor.french;
             }
 
             document.getElementById('target-word').textContent = `${promptText} = ${displayFrench} ?`;
             document.getElementById('tf-container').classList.remove('hidden');
-            this.timeLeft = 8; // Less time for judgment
+            this.timeLeft = 20; // Increased time
         }
 
         // Start Timer
@@ -220,7 +276,7 @@ class FrenchQuiz {
         const maxTime = this.timeLeft;
         this.timer = setInterval(() => {
             this.timeLeft -= 0.1;
-            document.getElementById('timer-bar').style.width = `${(this.timeLeft / maxTime) * 100}%`;
+            document.getElementById('timer-bar').style.width = `${Math.max(0, (this.timeLeft / maxTime) * 100)}%`;
             if (this.timeLeft <= 0) {
                 this.handleTimeout(questionObj);
             }
@@ -231,10 +287,10 @@ class FrenchQuiz {
 
     handleSpellingSubmit() {
         const input = document.getElementById('vocab-input').value.trim().toLowerCase();
+        // Allow empty check? No, must type something? allowed.
         const currentQ = this.questions[this.currentQuestionIndex];
         const correct = currentQ.french.toLowerCase();
 
-        // Simple normalization (ignore punctuation case but strict on accents)
         if (input === correct) {
             this.processResult(true, currentQ);
         } else {
@@ -250,53 +306,58 @@ class FrenchQuiz {
 
     processResult(isCorrect, questionObj, userAns = "") {
         clearInterval(this.timer);
-        const t = this.i18n[this.currentLang];
-        const feedbackEl = document.getElementById('feedback-msg');
-        feedbackEl.classList.remove('hidden');
+        this.renderFeedback(isCorrect, questionObj);
 
         if (isCorrect) {
             this.score++;
-            feedbackEl.textContent = t.correct;
-            feedbackEl.classList.add('correct');
-            feedbackEl.classList.remove('wrong');
         } else {
-            feedbackEl.textContent = `${t.wrong}${questionObj.french}`;
-            feedbackEl.classList.add('wrong');
-            feedbackEl.classList.remove('correct');
-            document.getElementById('vocab-input').classList.add('error');
-
             this.wrongAnswers.push({
                 questionObj: questionObj,
                 userAnswer: userAns,
                 correctAnswer: questionObj.french
             });
         }
-
-        // Delay
-        setTimeout(() => {
-            this.currentQuestionIndex++;
-            this.startQuizLoop();
-        }, 2000);
+        // WAIT for manual advance
     }
 
     handleTimeout(questionObj) {
         clearInterval(this.timer);
         const t = this.i18n[this.currentLang];
-        const feedbackEl = document.getElementById('feedback-msg');
-        feedbackEl.classList.remove('hidden');
-        feedbackEl.classList.add('wrong');
-        feedbackEl.textContent = `${t.timeOut} ${t.wrong}${questionObj.french}`;
+        const area = document.getElementById('feedback-area');
+        const msg = document.getElementById('feedback-msg');
+
+        area.classList.remove('hidden');
+        msg.textContent = `${t.timeOut} ${t.wrong}${questionObj.french}`;
+        msg.classList.add('wrong');
 
         this.wrongAnswers.push({
             questionObj: questionObj,
             userAnswer: "TIMEOUT",
             correctAnswer: questionObj.french
         });
+    }
 
-        setTimeout(() => {
-            this.currentQuestionIndex++;
-            this.startQuizLoop();
-        }, 2500);
+    renderFeedback(isCorrect, questionObj) {
+        const t = this.i18n[this.currentLang];
+        const area = document.getElementById('feedback-area');
+        const msg = document.getElementById('feedback-msg');
+        area.classList.remove('hidden');
+
+        if (isCorrect) {
+            msg.textContent = t.correct;
+            msg.classList.add('correct');
+            msg.classList.remove('wrong');
+        } else {
+            msg.textContent = `${t.wrong}${questionObj.french}`;
+            msg.classList.add('wrong');
+            msg.classList.remove('correct');
+            document.getElementById('vocab-input').classList.add('error');
+        }
+    }
+
+    advanceQuestion() {
+        this.currentQuestionIndex++;
+        this.startQuizLoop();
     }
 
     // --- End Game ---
@@ -316,8 +377,8 @@ class FrenchQuiz {
                 div.className = 'wrong-item';
                 let prompt = "";
                 if (this.currentLang === 'de') prompt = item.questionObj.german;
-                else if (this.currentLang === 'zh') prompt = item.questionObj.chinese;
-                else prompt = item.questionObj.english;
+                else if (this.currentLang === 'zh') prompt = item.questionObj.chinese || item.questionObj.german;
+                else prompt = item.questionObj.english || item.questionObj.german;
 
                 div.innerHTML = `
                     <div style="display:flex; justify-content:space-between; width:100%;">

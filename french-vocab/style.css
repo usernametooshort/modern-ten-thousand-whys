@@ -446,3 +446,86 @@ h1 {
 .hidden {
     display: none !important;
 }
+
+/* Virtual Keyboard */
+.virtual-keyboard {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    user-select: none;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+}
+
+.key-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    font-family: var(--font-std);
+    font-size: 1.1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0.8rem 0.4rem;
+    min-width: 32px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s;
+}
+
+.key-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.key-btn:active {
+    background: var(--primary-color);
+    transform: translateY(1px);
+}
+
+/* Special Keys */
+.key-enter {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    flex: 1.5;
+    font-weight: bold;
+}
+
+.key-backspace {
+    background: rgba(239, 68, 68, 0.5);
+    /* Light red */
+    border-color: rgba(239, 68, 68, 0.5);
+    flex: 1.5;
+}
+
+.key-space {
+    flex: 5;
+}
+
+.key-accent {
+    background: rgba(59, 130, 246, 0.3);
+    /* Blue tint */
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+@media (max-width: 600px) {
+    .key-btn {
+        padding: 0.6rem 0.2rem;
+        font-size: 0.9rem;
+        min-width: 24px;
+    }
+
+    .virtual-keyboard {
+        padding: 0.5rem;
+    }
+}
