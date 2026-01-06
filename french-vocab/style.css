@@ -323,6 +323,109 @@ h1 {
     }
 }
 
+/* Input Mode */
+.vocab-input {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-family: var(--font-std);
+    outline: none;
+    transition: all 0.3s;
+}
+
+.vocab-input:focus {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.vocab-input.error {
+    border-color: var(--error-color);
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Accent Toolbar */
+.accent-toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.accent-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.accent-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.accent-btn.action-btn {
+    width: auto;
+    padding: 0 1.5rem;
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Secondary Clue */
+.secondary-clue {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-top: -2rem;
+    margin-bottom: 2rem;
+}
+
+/* Feedback Message */
+.feedback-msg {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    min-height: 1.5em;
+}
+
+.feedback-msg.correct {
+    color: var(--success-color);
+}
+
+.feedback-msg.wrong {
+    color: var(--error-color);
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-10px);
+    }
+
+    75% {
+        transform: translateX(10px);
+    }
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .options-grid {
@@ -331,6 +434,12 @@ h1 {
 
     h1 {
         font-size: 1.8rem;
+    }
+
+    .accent-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
     }
 }
 

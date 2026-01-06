@@ -61,10 +61,36 @@
                 <div class="word-display">
                     <span id="question-label" class="word-label">Wähle das französische Wort:</span>
                     <div id="target-word" class="target-word">Ein Heft</div>
+                    <div id="secondary-clue" class="secondary-clue hidden"></div>
                 </div>
 
-                <div id="options-grid" class="options-grid">
-                    <!-- Buttons injected by JS -->
+                <!-- Dynamic Content Area -->
+                <div id="interaction-area">
+
+                    <!-- Type A: Spelling Input -->
+                    <div id="input-container" class="hidden">
+                        <input type="text" id="vocab-input" class="vocab-input" autocomplete="off"
+                            placeholder="Type answer..." spellcheck="false">
+                        <div id="accent-toolbar" class="accent-toolbar">
+                            <button class="accent-btn" onclick="insertChar('é')">é</button>
+                            <button class="accent-btn" onclick="insertChar('è')">è</button>
+                            <button class="accent-btn" onclick="insertChar('à')">à</button>
+                            <button class="accent-btn" onclick="insertChar('ç')">ç</button>
+                            <button class="accent-btn" onclick="insertChar('ù')">ù</button>
+                            <button class="accent-btn" onclick="insertChar('ô')">ô</button>
+                            <button class="accent-btn action-btn" id="submit-input-btn">Check</button>
+                        </div>
+                    </div>
+
+                    <!-- Type B: True/False -->
+                    <div id="tf-container" class="options-grid hidden">
+                        <button id="btn-true" class="option-btn tf-btn">VRAI (Richtig)</button>
+                        <button id="btn-false" class="option-btn tf-btn">FAUX (Falsch)</button>
+                    </div>
+
+                    <!-- Feedback Area -->
+                    <div id="feedback-msg" class="feedback-msg hidden"></div>
+
                 </div>
             </div>
 
