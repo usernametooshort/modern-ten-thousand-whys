@@ -62,6 +62,9 @@ const translations = {
         exp_5_4_nav: "5.4 法语词汇特训",
         exp_5_4_title: "5.4 法语词汇特训",
         exp_5_4_desc: "Unit 1 & 2 词汇挑战，直到完全掌握。",
+        exp_5_5_nav: "5.5 英语口语模拟",
+        exp_5_5_title: "5.5 英语口语模拟考",
+        exp_5_5_desc: "Nano Banana Pro 生成场景，AI 老师在线评分。",
         // Solar System Experience
         solar_planet_mercury: "水星",
         solar_planet_venus: "金星",
@@ -410,6 +413,9 @@ const translations = {
         exp_5_4_nav: "5.4 French Vocab",
         exp_5_4_title: "5.4 French Vocab Drill",
         exp_5_4_desc: "Unit 1 & 2 Vocabulary Challenge. Master school supplies, numbers, and Lyon context until 100% correct.",
+        exp_5_5_nav: "5.5 English Oral Exam",
+        exp_5_5_title: "5.5 English Oral Simulator",
+        exp_5_5_desc: "Nano Banana Pro generates scenarios, AI Teacher grades you in real-time.",
         // Solar System Experience
         solar_title: "Solar System Model",
         solar_intro: "Explore planetary orbits and relative speeds",
@@ -758,6 +764,9 @@ const translations = {
         exp_5_4_nav: "5.4 Französisch Vokabeln",
         exp_5_4_title: "5.4 Französisch Vokabeltrainer",
         exp_5_4_desc: "Unit 1 & 2 Vokabel-Challenge. Meistern Sie Schulsachen, Zahlen und Lyon-Wörter bis zu 100%.",
+        exp_5_5_nav: "5.5 Englisch Mündlich",
+        exp_5_5_title: "5.5 Englisch Mündliche Prüfung",
+        exp_5_5_desc: "Nano Banana Pro generiert Szenarien, KI-Lehrerin bewertet live.",
         // Solar System Experience
         solar_title: "Sonnensystem-Modell",
         solar_intro: "Erkunden Sie Planetenbahnen und relative Geschwindigkeiten",

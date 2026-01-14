@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Oral Exam - Grade 7</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Roboto:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <!-- Marked for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+
+    <div class="exam-container">
+        <header>
+            <h1>English Oral Exam <span class="badge">Grade 7</span></h1>
+            <p>Gymnasium Bayern - Mündliche Schulaufgabe Simulator</p>
+        </header>
+
+        <main>
+            <!-- Generator Section -->
+            <section id="generator-section" class="card">
+                <div class="nano-banana-header">
+                    <h2>🍌 Nano Banana Pro</h2>
+                    <span class="status">AI Status: Online</span>
+                </div>
+
+                <!-- Mic Check & Settings -->
+                <div class="mic-check-area">
+                    <div class="mic-controls">
+                        <select id="mic-select" class="mic-selector">
+                            <option value="">Default Microphone</option>
+                        </select>
+                        <button id="mic-test-btn" class="secondary-btn small-btn">
+                            🎤 Test & Visualize
+                        </button>
+                    </div>
+                    <canvas id="audio-visualizer" width="200" height="50"></canvas>
+                    <p id="mic-status" class="status-text neutral">Click to test local audio.</p>
+                </div>
+
+                <div class="network-warning hidden" id="network-warning">
+                    ⚠️ <strong>Warning:</strong> Speech Recognition requires a secure HTTPS connection or Localhost. If
+                    it fails, please type your answer below.
+                </div>
+
+                <div class="student-info-box">
+                    <label for="student-name">Student Name (for Grading):</label>
+                    <input type="text" id="student-name" placeholder="e.g. Hans, Sophie..." autocomplete="off">
+                </div>
+
+                <div class="mode-switcher">
+                    <label class="mode-label">
+                        <input type="radio" name="exam-mode" value="generator" checked>
+                        <span>🎲 Generator Mode</span>
+                    </label>
+                    <label class="mode-label">
+                        <input type="radio" name="exam-mode" value="textbook">
+                        <span>📖 Textbook Upload</span>
+                    </label>
+                </div>
+
+                <!-- Generator Controls -->
+                <div id="generator-controls" class="banana-controls">
+                    <p>Click to generate your exam scenario...</p>
+                    <button id="generate-btn" class="primary-btn">
+                        <span class="icon">🎲</span> Generate Scenario
+                    </button>
+                    <div id="loading-overlay" class="hidden loading-container">
+                        <div class="spinner">🍌</div>
+                        <p>Nano Banana Pro is thinking...</p>
+                    </div>
+                </div>
+
+                <!-- Upload Controls (Hidden by default) -->
+                <div id="upload-controls" class="banana-controls hidden">
+                    <p>Upload a picture from your textbook:</p>
+                    <div class="file-upload-wrapper">
+                        <br>
+                        <input type="file" id="textbook-upload" accept="image/*">
+                    </div>
+                    <button id="start-upload-btn" class="primary-btn" disabled>
+                        <span class="icon">🚀</span> Start Textbook Exam
+                    </button>
+                </div>
+            </section>
+
+            <!-- Scenario Display -->
+            <section id="scenario-display" class="card hidden">
+                <div class="scenario-header">
+                    <h3 id="scenario-title">Topic: Loading...</h3>
+                    <div class="task-box">
+                        <span class="label">TASK:</span>
+                        <p id="scenario-task">Describe the picture and answer the question.</p>
+                    </div>
+                </div>
+
+                <div class="image-viewport">
+                    <div id="loading-overlay" class="hidden">
+                        <div class="spinner">🍌</div>
+                        <p>Generating Image...</p>
+                    </div>
+                    <img id="scenario-image" src="" alt="Exam Scenario" class="hidden">
+                </div>
+
+                <!-- Recording Section -->
+                <div class="recording-controls">
+                    <button id="record-btn" class="record-btn">
+                        <span class="mic-icon">🎤</span> Start Answer
+                    </button>
+                    <p class="status-text" id="record-status">Ready to record...</p>
+                </div>
+
+                <!-- Transcript Display -->
+                <div class="transcript-box">
+                    <h4>Your Answer (Speech or Type):</h4>
+                    <textarea id="transcript-text"
+                        placeholder="Text will appear here as you speak. If speech fails, type your answer here..."></textarea>
+                </div>
+
+                <!-- Grading Trigger -->
+                <div class="action-row">
+                    <button id="grade-btn" class="grade-btn" disabled>
+                        📝 Grade My Answer (Frau Müller)
+                    </button>
+                </div>
+            </section>
+
+            <!-- Grading Result -->
+            <section id="grading-result" class="card hidden">
+                <div class="teacher-persona">
+                    <div class="avatar">👩‍🏫</div>
+                    <div class="info">
+                        <strong>Frau Müller</strong>
+                        <span>English Teacher, 7b</span>
+                    </div>
+                </div>
+                <div id="grading-content" class="grading-body">
+                    <!-- Markdown content goes here -->
+                </div>
+                <button id="retry-btn" class="secondary-btn">New Scenario</button>
+            </section>
+
+            <!-- History Section -->
+            <section id="history-section" class="card">
+                <h3>📜 Exam History & Feedback</h3>
+                <div id="history-list">
+                    <p class="status-text neutral" id="no-history-msg">No exams completed yet.</p>
+                </div>
+                <button id="clear-history-btn" class="secondary-btn small-btn" style="margin-top:20px;">Clear
+                    History</button>
+            </section>
+        </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
