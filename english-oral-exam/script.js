@@ -461,14 +461,20 @@ async function callGeminiAPI(scenario, studentAnswer, studentName, mode, imageDa
         
         ANTWORT DES SCHÜLERS: "${studentAnswer}"
         
-        Bewerte die Antwort auf DEUTSCH.
-        Kriterien:
-        1. Inhalt: Wurde die Frage beantwortet?
-        2. Grammatik: Wurden die Zielvokabeln korrekt benutzt?
-        3. Ausdruck: Ist das Englisch für eine 7. Klasse angemessen?
+        AUFGABE FÜR DICH (KI):
         
-        Sprich den Schüler direkt mit ${studentName} an.
-        Gib Note (1-6).
+        1. BEWERTUNG (auf Deutsch):
+           - Analysiere die Antwort des Schülers.
+           - Inhalt, Grammatik, Ausdruck (7. Klasse Niveau).
+           - Gib eine Note (1-6).
+           - Sprich den Schüler mit "${studentName}" an.
+           
+        2. MUSTERLÖSUNG (auf Englisch):
+           - Schreibe eine Vorbild-Antwort (Model Answer).
+           - Beschreibe GENAU, was im Bild zu sehen ist (besonders im Textbook Mode wichtig!).
+           - Niveau: Perfektes Englisch für die 7. Klasse.
+           - Überschrift: "### 💡 Musterlösung / Model Answer"
+           
         Format: Markdown.
     `;
 
