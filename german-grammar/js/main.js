@@ -852,17 +852,17 @@ function renderReferenceTables() {
         container.appendChild(hint);
 
         // Update Modal Title
-        const modalTitle = document.getElementById('table-modal-title');
+        const modalTitle = document.getElementById('modal-title-text'); // Corrected
         if (modalTitle) modalTitle.innerText = tableData.title;
 
         // Hide Tab Buttons for K1 (since there's only one table)
-        const tabs = document.querySelector('.table-tabs');
+        const tabs = document.querySelector('.grammar-tabs'); // Corrected
         if (tabs) tabs.style.display = 'none';
 
     } else {
         // --- ADJECTIVE TABLES ---
         // Restore Tabs
-        const tabs = document.querySelector('.table-tabs');
+        const tabs = document.querySelector('.grammar-tabs'); // Corrected
         if (tabs) tabs.style.display = 'flex';
 
         const weakHTML = createTableHTML(t.weak, GRAMMAR_TABLE[ARTICLES.DEF]);
@@ -890,7 +890,7 @@ function renderReferenceTables() {
             showTableTab('weak');
         }
 
-        const modalTitle = document.getElementById('table-modal-title');
+        const modalTitle = document.getElementById('modal-title-text');
         if (modalTitle) modalTitle.innerText = t.modal_title;
     }
 }
@@ -1567,6 +1567,7 @@ function setupEventListeners() {
             e.stopPropagation();
             const modal = document.getElementById('modal-table');
             if (modal) {
+                renderReferenceTables(); // Refresh content based on current mode!
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
             }
