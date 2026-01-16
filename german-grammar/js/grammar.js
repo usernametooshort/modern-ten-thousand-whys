@@ -407,67 +407,66 @@ export const RUMOR_TEMPLATES = [
 ];
 
 export const K1_LEVELS = {
-    1: [ // Level 1: Strong Verbs (a->ä, e->i in Indikativ vs No change in K1)
-        { direct: "Der Zeuge sieht den Unfall.", indirect: "er sehe den Unfall", pronoun: "er", verb: "sehen", k1: "sehe", ind: "sieht", hint: "sehen (stark) -> K1: sehe, Ind: sieht" },
-        { direct: "Der Bus fährt zu schnell.", indirect: "der Bus fahre zu schnell", pronoun: "er", verb: "fahren", k1: "fahre", ind: "fährt", hint: "fahren (stark) -> K1: fahre, Ind: fährt" },
-        { direct: "Der Schüler läuft weg.", indirect: "der Schüler laufe weg", pronoun: "er", verb: "laufen", k1: "laufe", ind: "läuft", hint: "laufen (stark) -> K1: laufe, Ind: läuft" },
-        { direct: "Er trägt eine rote Mütze.", indirect: "er trage eine rote Mütze", pronoun: "er", verb: "tragen", k1: "trage", ind: "trägt", hint: "tragen -> K1: trage" },
-        { direct: "Das Kind fällt hin.", indirect: "das Kind falle hin", pronoun: "es", verb: "fallen", k1: "falle", ind: "fällt", hint: "fallen -> K1: falle" },
-        { direct: "Der Lehrer gibt Hausaufgaben.", indirect: "der Lehrer gebe Hausaufgaben", pronoun: "er", verb: "geben", k1: "gebe", ind: "gibt", hint: "geben (stark) -> K1: gebe, Ind: gibt" },
-        { direct: "Die Frau nimmt die Tasche.", indirect: "die Frau nehme die Tasche", pronoun: "sie", verb: "nehmen", k1: "nehme", ind: "nimmt", hint: "nehmen -> K1: nehme, Ind: nimmt" },
-        { direct: "Der Hund beißt den Mann.", indirect: "der Hund beiße den Mann", pronoun: "er", verb: "beißen", k1: "beiße", ind: "beißt", hint: "beißen -> K1: beiße" },
-        { direct: "Er spricht mit der Polizei.", indirect: "er spreche mit der Polizei", pronoun: "er", verb: "sprechen", k1: "spreche", ind: "spricht", hint: "sprechen -> K1: spreche, Ind: spricht" },
-        { direct: "Das Feuer bricht aus.", indirect: "das Feuer breche aus", pronoun: "es", verb: "brechen", k1: "breche", ind: "bricht", hint: "brechen -> K1: breche" },
-        { direct: "Der Fahrer hält nicht an.", indirect: "der Fahrer halte nicht an", pronoun: "er", verb: "halten", k1: "halte", ind: "hält", hint: "halten -> K1: halte" },
-        { direct: "Er lässt die Tasche fallen.", indirect: "er lasse die Tasche fallen", pronoun: "er", verb: "lassen", k1: "lasse", ind: "lässt", hint: "lassen -> K1: lasse" },
-        { direct: "Er schläft im Unterricht.", indirect: "er schlafe im Unterricht", pronoun: "er", verb: "schlafen", k1: "schlafe", ind: "schläft", hint: "schlafen -> K1: schlafe" },
-        { direct: "Der Dieb stiehlt das Rad.", indirect: "der Dieb stehle das Rad", pronoun: "er", verb: "stehlen", k1: "stehle", ind: "stiehlt", hint: "stehlen -> K1: stehle" },
-        { direct: "Er vergisst die Zeit.", indirect: "er vergesse die Zeit", pronoun: "er", verb: "vergessen", k1: "vergesse", ind: "vergisst", hint: "vergessen -> K1: vergesse" }
+    1: [ // Level 1: The Basics (Structure) - 3rd Person Singular (Unique Forms)
+        { direct: "Der Zeuge sieht den Unfall.", indirect: "er sehe den Unfall", pronoun: "er", verb: "sehen", k1: "sehe", ind: "sieht", hint: "Standard: Stem + e (er sehe)" },
+        { direct: "Der Bus fährt zu schnell.", indirect: "der Bus fahre zu schnell", pronoun: "er", verb: "fahren", k1: "fahre", ind: "fährt", hint: "Standard: No Umlaut (a -> a)" },
+        { direct: "Er kommt heute.", indirect: "er komme heute", pronoun: "er", verb: "kommen", k1: "komme", ind: "kommt", hint: "Standard: Stem + e (er komme)" },
+        { direct: "Die Lehrerin gibt Aufgaben.", indirect: "sie gebe Aufgaben", pronoun: "sie", verb: "geben", k1: "gebe", ind: "gibt", hint: "Standard: Stem + e (sie gebe)" },
+        { direct: "Das Kind läuft weg.", indirect: "es laufe weg", pronoun: "es", verb: "laufen", k1: "laufe", ind: "läuft", hint: "Standard: No Umlaut (au -> au)" },
+        { direct: "Er trägt eine Brille.", indirect: "er trage eine Brille", pronoun: "er", verb: "tragen", k1: "trage", ind: "trägt", hint: "Standard: No Umlaut (a -> a)" },
+        { direct: "Sie liest das Buch.", indirect: "sie lese das Buch", pronoun: "sie", verb: "lesen", k1: "lese", ind: "liest", hint: "Standard: Stem + e (sie lese)" },
+        { direct: "Er hält das Lenkrad.", indirect: "er halte das Lenkrad", pronoun: "er", verb: "halten", k1: "halte", ind: "hält", hint: "Standard: No Umlaut (a -> a)" },
+        { direct: "Es regnet stark.", indirect: "es regne stark", pronoun: "es", verb: "regnen", k1: "regne", ind: "regnet", hint: "Standard: Stem + e" },
+        { direct: "Er vergisst den Schlüssel.", indirect: "er vergesse den Schlüssel", pronoun: "er", verb: "vergessen", k1: "vergesse", ind: "vergisst", hint: "Standard: Stem + e (vergesse)" }
     ],
-    2: [ // Level 2: Special/Irregular Verbs
-        { direct: "Er weiß nichts davon.", indirect: "er wisse nichts davon", pronoun: "er", verb: "wissen", k1: "wisse", ind: "weiß", hint: "wissen -> K1: wisse" },
-        { direct: "Der Schüler wird frech.", indirect: "der Schüler werde frech", pronoun: "er", verb: "werden", k1: "werde", ind: "wird", hint: "werden -> K1: werde" },
-        { direct: "Es gibt Probleme.", indirect: "es gebe Probleme", pronoun: "es", verb: "geben", k1: "gebe", ind: "gibt", hint: "es gibt -> es gebe" },
-        { direct: "Er hat keine Schuld.", indirect: "er habe keine Schuld", pronoun: "er", verb: "haben", k1: "habe", ind: "hat", hint: "haben -> K1: habe" },
-        { direct: "Das tut weh.", indirect: "das tue weh", pronoun: "es", verb: "tun", k1: "tue", ind: "tut", hint: "tun -> K1: tue" },
-        { direct: "Er ruft um Hilfe.", indirect: "er rufe um Hilfe", pronoun: "er", verb: "rufen", k1: "rufe", ind: "ruft", hint: "rufen -> K1: rufe" },
-        { direct: "Das Auto stößt zusammen.", indirect: "das Auto stoße zusammen", pronoun: "es", verb: "stoßen", k1: "stoße", ind: "stößt", hint: "stoßen -> K1: stoße" },
-        { direct: "Er lädt das Video hoch.", indirect: "er lade das Video hoch", pronoun: "er", verb: "laden", k1: "lade", ind: "lädt", hint: "laden -> K1: lade" },
-        { direct: "Der Preis beträgt 5 Euro.", indirect: "der Preis betrage 5 Euro", pronoun: "er", verb: "betragen", k1: "betrage", ind: "beträgt", hint: "betragen -> K1: betrage" },
-        { direct: "Er empfiehlt das Spiel.", indirect: "er empfehle das Spiel", pronoun: "er", verb: "empfehlen", k1: "empfehle", ind: "empfiehlt", hint: "empfehlen -> K1: empfehle" }
+    2: [ // Level 2: The Exception (Sein)
+        { direct: "Er ist krank.", indirect: "er sei krank", pronoun: "er", verb: "sein", k1: "sei", ind: "ist", hint: "Sein (Irregular): er sei" },
+        { direct: "Wir sind Freunde.", indirect: "sie seien Freunde", pronoun: "sie", verb: "sein", k1: "seien", ind: "sind", hint: "Sein Plural: sie seien" },
+        { direct: "Sie sind müde.", indirect: "sie seien müde", pronoun: "sie", verb: "sein", k1: "seien", ind: "sind", hint: "Sein Plural: sie seien" },
+        { direct: "Das Wetter ist gut.", indirect: "das Wetter sei gut", pronoun: "es", verb: "sein", k1: "sei", ind: "ist", hint: "Sein: es sei" },
+        { direct: "Ich bin da.", indirect: "er sei da", pronoun: "er", verb: "sein", k1: "sei", ind: "ist/bin", hint: "Sein: er sei" },
+        { direct: "Die Kinder sind glücklich.", indirect: "die Kinder seien glücklich", pronoun: "sie", verb: "sein", k1: "seien", ind: "sind", hint: "Sein Plural: sie seien" },
+        { direct: "Es ist zu spät.", indirect: "es sei zu spät", pronoun: "es", verb: "sein", k1: "sei", ind: "ist", hint: "Sein: es sei" },
+        { direct: "Ihr seid eingeladen.", indirect: "sie seien eingeladen", pronoun: "sie", verb: "sein", k1: "seien", ind: "seid", hint: "Sein Plural: sie seien" }
     ],
-    3: [ // Level 3: Modals (No Umlaut generally)
-        { direct: "Er muss warten.", indirect: "er müsse warten", pronoun: "er", verb: "müssen", k1: "müsse", ind: "muss", hint: "müssen -> K1: müsse" },
-        { direct: "Sie kann nicht kommen.", indirect: "sie könne nicht kommen", pronoun: "sie", verb: "können", k1: "könne", ind: "kann", hint: "können -> K1: könne" },
-        { direct: "Der Fahrer will abbiegen.", indirect: "der Fahrer wolle abbiegen", pronoun: "er", verb: "wollen", k1: "wolle", ind: "will", hint: "wollen -> K1: wolle" },
-        { direct: "Die Kinder dürfen spielen.", indirect: "die Kinder dürften spielen", pronoun: "sie", verb: "dürfen", k1: "dürften", ind: "dürfen", hint: "Plural dürfen -> dürften (KII replacement)" },
-        { direct: "Er darf das nicht.", indirect: "er dürfe das nicht", pronoun: "er", verb: "dürfen", k1: "dürfe", ind: "darf", hint: "dürfen -> K1: dürfe" },
-        { direct: "Wir sollen aufpassen.", indirect: "sie sollten aufpassen", pronoun: "sie", verb: "sollen", k1: "sollten", ind: "sollen", hint: "Plural sollen -> sollten (KII replacement)" },
-        { direct: "Er soll lernen.", indirect: "er solle lernen", pronoun: "er", verb: "sollen", k1: "solle", ind: "soll", hint: "sollen -> K1: solle" },
-        { direct: "Er mag keine Energy Drinks.", indirect: "er möge keine Energy Drinks", pronoun: "er", verb: "mögen", k1: "möge", ind: "mag", hint: "mögen -> K1: möge" },
-        { direct: "Er möchte gehen.", indirect: "er möchte gehen", pronoun: "er", verb: "möchten", k1: "möchte", ind: "möchte", hint: "möchten unchanged" },
-        { direct: "Sie müssen helfen.", indirect: "sie müssten helfen", pronoun: "sie", verb: "müssen", k1: "müssten", ind: "müssen", hint: "Plural müssen -> KII: müssten" }
+    3: [ // Level 3: The Collision (Ersatzform K2/Würden)
+        // Rule: If K1 == Indikativ, use K2. If K2 == Indikativ Präteritum, use Würden.
+        { direct: "Wir gehen nach Hause.", indirect: "sie gingen nach Hause", pronoun: "sie", verb: "gehen", k1: "gingen", ind: "gehen", hint: "Collision: K1(gehen)==Ind -> Use K2 (gingen)" },
+        { direct: "Die Eltern haben keine Zeit.", indirect: "die Eltern hätten keine Zeit", pronoun: "sie", verb: "haben", k1: "hätten", ind: "haben", hint: "Collision: K1(haben)==Ind -> Use K2 (hätten)" },
+        { direct: "Sie kommen morgen.", indirect: "sie kämen morgen", pronoun: "sie", verb: "kommen", k1: "kämen", ind: "kommen", hint: "Collision: K1(kommen)==Ind -> Use K2 (kämen)" },
+        { direct: "Wir lernen Deutsch.", indirect: "sie würden Deutsch lernen", pronoun: "sie", verb: "lernen", k1: "würden lernen", ind: "lernen", hint: "Weak Verb: K1=Ind, K2=Prät -> Use 'würden'" },
+        { direct: "Sie brauchen Hilfe.", indirect: "sie würden Hilfe brauchen", pronoun: "sie", verb: "brauchen", k1: "würden brauchen", ind: "brauchen", hint: "Weak Verb: K1=Ind -> Use 'würden'" },
+        { direct: "Die Kinder dürfen spielen.", indirect: "die Kinder dürften spielen", pronoun: "sie", verb: "dürfen", k1: "dürften", ind: "dürfen", hint: "Modal: K1(dürfen)==Ind -> Use K2 (dürften)" },
+        { direct: "Wir müssen warten.", indirect: "sie müssten warten", pronoun: "sie", verb: "müssen", k1: "müssten", ind: "müssen", hint: "Modal: K1(müssen)==Ind -> Use K2 (müssten)" },
+        { direct: "Sie sehen das Problem.", indirect: "sie sähen das Problem", pronoun: "sie", verb: "sehen", k1: "sähen", ind: "sehen", hint: "Strong Verb: K1==Ind -> Use K2 (sähen)" },
+        { direct: "Wir fahren weg.", indirect: "sie würden wegfahren", pronoun: "sie", verb: "fahren", k1: "würden fahren", ind: "fahren", hint: "Weak-ish: K2 fuhren? Prefer Würden." },
+        { direct: "Sie fragen viel.", indirect: "sie würden viel fragen", pronoun: "sie", verb: "fragen", k1: "würden fragen", ind: "fragen", hint: "Weak Verb -> 'würden'" }
     ],
-    4: [ // Level 4: Past Tense (sei/habe + Partizip II)
-        { direct: "Der Unfall passierte gestern.", indirect: "der Unfall sei gestern passiert", pronoun: "er", verb: "passieren", k1: "sei passiert", ind: "passierte", hint: "Past -> Perfect (sei/habe)" },
-        // "Ich sah" -> reported as "Er habe" (assuming Villager speaking about himself)
-        { direct: "Ich sah den Täter.", indirect: "er habe den Täter gesehen", pronoun: "er", verb: "sehen", k1: "habe gesehen", ind: "sah", hint: "sah -> habe gesehen" },
-        { direct: "Der Bus kam zu spät.", indirect: "der Bus sei zu spät gekommen", pronoun: "er", verb: "kommen", k1: "sei gekommen", ind: "kam", hint: "kam -> sei gekommen" },
-        // "Wir haben" -> reported as "Sie hätten"
-        { direct: "Wir haben gewartet.", indirect: "sie hätten gewartet", pronoun: "sie", verb: "warten", k1: "hätten gewartet", ind: "haben gewartet", hint: "haben -> haben (same) -> KII: hätten" },
-        { direct: "Er war betrunken.", indirect: "er sei betrunken gewesen", pronoun: "er", verb: "sein", k1: "sei gewesen", ind: "war", hint: "war -> sei gewesen" },
-        { direct: "Das Auto fuhr weg.", indirect: "das Auto sei weggefahren", pronoun: "es", verb: "fahren", k1: "sei weggefahren", ind: "fuhr", hint: "fuhr -> sei weggefahren" },
-        { direct: "Die Polizei sperrte ab.", indirect: "die Polizei habe abgesperrt", pronoun: "sie", verb: "absperren", k1: "habe abgesperrt", ind: "sperrte", hint: "sperrte -> habe abgesperrt" },
-        { direct: "Niemand wurde verletzt.", indirect: "niemand sei verletzt worden", pronoun: "es", verb: "werden", k1: "sei verletzt worden", ind: "wurde verletzt", hint: "Passive: wurde -> sei ... worden" },
-        { direct: "Er hatte Angst.", indirect: "er habe Angst gehabt", pronoun: "er", verb: "haben", k1: "habe gehabt", ind: "hatte", hint: "hatte -> habe gehabt" },
-        { direct: "Die Sirene ging los.", indirect: "die Sirene sei losgegangen", pronoun: "sie", verb: "losgehen", k1: "sei losgegangen", ind: "ging los", hint: "ging -> sei gegangen" }
+    4: [ // Level 4: Time Travel (Past & Future)
+        // Rule: All Past (Perfekt/Prät) -> K1 Perfect (sei/habe + P.II)
+        // Rule: Future -> K1 Future (werde + Inf)
+        { direct: "Ich war dort.", indirect: "er sei dort gewesen", pronoun: "er", verb: "sein", k1: "sei gewesen", ind: "war", hint: "Past -> K1 Perfect: sei gewesen" },
+        { direct: "Jemand hat angerufen.", indirect: "jemand habe angerufen", pronoun: "es", verb: "anrufen", k1: "habe angerufen", ind: "hat angerufen", hint: "Perfect -> K1 Perfect: habe + P.II" },
+        { direct: "Der Unfall passierte gestern.", indirect: "der Unfall sei gestern passiert", pronoun: "er", verb: "passieren", k1: "sei passiert", ind: "passierte", hint: "Past (Movement) -> sei passiert" },
+        { direct: "Ich werde kommen.", indirect: "er werde kommen", pronoun: "er", verb: "kommen", k1: "werde kommen", ind: "werde kommen", hint: "Future: werde + Infinitiv" },
+        { direct: "Es wird regnen.", indirect: "es werde regnen", pronoun: "es", verb: "regnen", k1: "werde regnen", ind: "wird regnen", hint: "Future: werde + Infinitiv" },
+        { direct: "Wir haben gegessen.", indirect: "sie hätten gegessen", pronoun: "sie", verb: "essen", k1: "hätten gegessen", ind: "haben gegessen", hint: "Collision in Aux: haben->hätten + P.II" },
+        { direct: "Er sah den Täter.", indirect: "er habe den Täter gesehen", pronoun: "er", verb: "sehen", k1: "habe gesehen", ind: "sah", hint: "Präteritum -> habe gesehen" },
+        { direct: "Sie sind abgefahren.", indirect: "sie seien abgefahren", pronoun: "sie", verb: "abfahren", k1: "seien abgefahren", ind: "sind abgefahren", hint: "Plural Sein -> seien + P.II" },
+        { direct: "Er war betrunken.", indirect: "er sei betrunken gewesen", pronoun: "er", verb: "sein", k1: "sei gewesen", ind: "war", hint: "Past -> sei gewesen" },
+        { direct: "Die Polizei sperrte ab.", indirect: "die Polizei habe abgesperrt", pronoun: "sie", verb: "absperren", k1: "habe abgesperrt", ind: "sperrte", hint: "Präteritum -> habe abgesperrt" }
     ],
-    5: [ // Level 5: Replacement Forms (KII/Würde when K1 == Indikativ)
-        { direct: "Die Eltern haben keine Zeit.", indirect: "die Eltern hätten keine Zeit", pronoun: "sie", verb: "haben", k1: "hätten", ind: "haben", hint: "Plural haben matches -> use KII: hätten" },
-        { direct: "Die Schüler lernen viel.", indirect: "die Schüler würden viel lernen", pronoun: "sie", verb: "lernen", k1: "würden lernen", ind: "lernen", hint: "Plural lernen matches -> use würde" },
-        { direct: "Sie fahren nach Hause.", indirect: "sie würden nach Hause fahren", pronoun: "sie", verb: "fahren", k1: "würden fahren", ind: "fahren", hint: "Plural fahren matches -> use würde" },
-        { direct: "Die Zeugen kommen später.", indirect: "die Zeugen kämen später", pronoun: "sie", verb: "kommen", k1: "kämen", ind: "kommen", hint: "Plural kommen matches -> use KII: kämen" },
-        { direct: "Die Lehrer sehen das Problem.", indirect: "die Lehrer sähen das Problem", pronoun: "sie", verb: "sehen", k1: "sähen", ind: "sehen", hint: "Plural sehen matches -> use KII: sähen" }
+    5: [ // Level 5: Orders (Imperative -> Sollen/Mögen)
+        { direct: "Mach die Tür zu!", indirect: "er solle die Tür zumachen", pronoun: "er", verb: "zumachen", k1: "solle zumachen", ind: "mach", hint: "Imperative (Order) -> sollen" },
+        { direct: "Seid leise!", indirect: "sie sollten leise sein", pronoun: "sie", verb: "sein", k1: "sollten sein", ind: "seid", hint: "Order (Plural) -> sollen -> sollten (collision)" },
+        { direct: "Komm sofort her!", indirect: "er solle sofort herkommen", pronoun: "er", verb: "herkommen", k1: "solle herkommen", ind: "komm", hint: "Imperative -> sollen" },
+        { direct: "Nimm die Tabletten!", indirect: "er solle die Tabletten nehmen", pronoun: "er", verb: "nehmen", k1: "solle nehmen", ind: "nimm", hint: "Advice/Order -> sollen" },
+        { direct: "Fahr nicht so schnell!", indirect: "er solle nicht so schnell fahren", pronoun: "er", verb: "fahren", k1: "solle fahren", ind: "fahr", hint: "Negative Order -> sollen" },
+        { direct: "Rufen Sie an!", indirect: "er solle anrufen", pronoun: "er", verb: "anrufen", k1: "solle anrufen", ind: "rufen Sie", hint: "Polite Request -> sollen/möge" },
+        { direct: "Geht nach Hause!", indirect: "sie sollten nach Hause gehen", pronoun: "sie", verb: "gehen", k1: "sollten gehen", ind: "geht", hint: "Order (Plural) -> sollten" },
+        { direct: "Warte hier!", indirect: "er solle hier warten", pronoun: "er", verb: "warten", k1: "solle warten", ind: "warte", hint: "Order -> sollen" },
+        { direct: "Seien Sie vorsichtig!", indirect: "er solle vorsichtig sein", pronoun: "er", verb: "sein", k1: "solle sein", ind: "seien Sie", hint: "Polite -> sollen" },
+        { direct: "Hört auf!", indirect: "sie sollten aufhören", pronoun: "sie", verb: "aufhören", k1: "sollten aufhören", ind: "hört auf", hint: "Order -> sollten" }
     ]
 };
 
@@ -529,17 +528,23 @@ export class GrammarEngine {
             const randomSpeakerName = speakers[Math.floor(Math.random() * speakers.length)];
             const baseScenario = baseScenarios[Math.floor(Math.random() * baseScenarios.length)];
 
+            // Determine Intro Pronoun based on Speaker Name
+            let introPronoun = "Er";
+            if (randomSpeakerName.toLowerCase().includes("frau") || randomSpeakerName.toLowerCase().includes("lehrerin")) {
+                introPronoun = "Sie";
+            } else if (randomSpeakerName.toLowerCase().includes("kind") || randomSpeakerName.toLowerCase().includes("mädchen")) {
+                introPronoun = "Es";
+            } else {
+                // Default Er (Villager, Lehrer, Polizist, etc)
+                introPronoun = "Er";
+            }
+
             // Construct Prompt
             const prompt = `${randomSpeakerName}: "${baseScenario.direct}"`;
 
             // Pronoun for "Er/Sie sagt, [pronoun] ..."
             // Use the explicit pronoun from data if available, or fallback to 'er'
             const targetPronoun = baseScenario.pronoun || 'er';
-
-            // Full answer for voice check matching
-            // We want to be lenient: IF user says "Er sagt das Kind falle..." it's also correct, but hard to catch.
-            // We stick to checking the KEY VERB (answerKey) mostly.
-            // But for the visual feedback string, we want the PROPER pronoun.
 
             return {
                 mode: 'konjunktiv_i',
@@ -549,12 +554,13 @@ export class GrammarEngine {
                     ind_ich: baseScenario.ind,
                     konj_er: baseScenario.k1,
                     explanation: baseScenario.hint,
-                    speakerPronoun: targetPronoun // Pass to UI
+                    speakerPronoun: targetPronoun, // The subject of the K1 clause (e.g. "er" in "er fahre")
+                    introPronoun: introPronoun     // The reporter (e.g. "Sie" in "Sie sagt")
                 },
                 level: targetLvl,
                 context: { text: "Hör zu...", meaningKey: "k1_hint" },
                 answerKey: baseScenario.k1,
-                fullAnswer: `Er sagt, ${targetPronoun} ${baseScenario.k1}...` // For UI Feedback
+                fullAnswer: `${introPronoun} sagt, ${targetPronoun} ${baseScenario.k1}...` // Corrected Full Answer
             };
         }
 

@@ -980,11 +980,14 @@ function nextQuestion() {
     ui.btnCheck.disabled = true;
 
     if (currentQ.mode === 'konjunktiv_i') {
+        const intro = currentQ.verb.introPronoun || 'Er';
+        const speaker = currentQ.verb.speakerPronoun || 'er';
+
         // K1 Display using Classes (Mobile Friendly)
         ui.sentence.innerHTML = `
             <div class="k1-prompt">${currentQ.prompt}</div>
             <div class="k1-report-label">Du berichtest:</div>
-            <div class="k1-target">Er sagt, er <span class="k1-blank">?</span> ...</div>
+            <div class="k1-target">${intro} sagt, ${speaker} <span class="k1-blank">?</span> ...</div>
         `;
 
         // Show Mic Button
