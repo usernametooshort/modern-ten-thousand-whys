@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { GrammarEngine, CASES, GENDERS, ARTICLES, GRAMMAR_TABLE } from './grammar.js';
+import { GrammarEngine, CASES, GENDERS, ARTICLES, GRAMMAR_TABLE, VERBS, K1_GRAMMAR_TABLE } from './grammar.js';
 
 // Error Handler
-window.onerror = function(msg, url, line, col, error) {
+window.onerror = function (msg, url, line, col, error) {
     const log = document.getElementById('error-log');
     if (log) {
         log.style.display = 'block';
@@ -69,7 +69,12 @@ const DICT = {
         art_short_indef: "不定冠词",
         art_short_none: "无冠词",
         expl_fmt: "因为 <b>{noun}</b> 是<b>{gender}</b>名词，且此处处于<b>{case}</b>。在使用<b>{artType}</b>时，形容词词尾应为...",
-        loading: "加载中..."
+        loading: "加载中...",
+        mic_listening: "正在听...",
+        mic_start: "按住说话",
+        k1_mode: "Konjunktiv I (传声筒)",
+        k1_hint: "听，然后用 'Er sagt, er...' 转述！",
+        show_options: "💡 显示选项"
     },
     en: {
         title: "German Declension Constructor",
@@ -127,7 +132,12 @@ const DICT = {
         art_short_indef: "indefinite article",
         art_short_none: "no article",
         expl_fmt: "Because <b>{noun}</b> is a <b>{gender}</b> noun, and here it is in the <b>{case}</b>. With <b>{artType}</b>, the adjective needs...",
-        loading: "Loading..."
+        loading: "Loading...",
+        mic_listening: "Listening...",
+        mic_start: "Push to Talk",
+        k1_mode: "Konjunktiv I (Rumor)",
+        k1_hint: "Listen, then report with 'Er sagt, er...'",
+        show_options: "💡 Show Options"
     },
     de: {
         title: "Deklinations-Baukasten",
@@ -185,7 +195,13 @@ const DICT = {
         art_short_indef: "unbestimmtem Artikel",
         art_short_none: "Nullartikel",
         expl_fmt: "Da <b>{noun}</b> ein <b>{gender}</b> Nomen ist, und hier im <b>{case}</b> steht. Mit <b>{artType}</b>...",
-        loading: "Laden..."
+        loading: "Laden...",
+        mic_listening: "Zuhören...",
+        mic_start: "Sprechen",
+        k1_mode: "Konjunktiv I (Gerücht)",
+        k1_hint: "Hör zu und berichte: 'Er sagt, er...'",
+        show_options: "💡 Optionen zeigen"
+
     }
 };
 let currentLang = 'zh';
@@ -199,13 +215,33 @@ let isChecking = false;
 let lastCheckResult = null;
 let lastIncorrectExplanation = null;
 
+// Speech Recognition
+let recognition = null;
+let isListening = false;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'de-DE';
+    recognition.continuous = true; // Changed to TRUE to match English module stability
+    recognition.interimResults = true; // Changed to TRUE for visual feedback
+}
+
+
 // Stats
 let streak = 0;
 let level = 1;
 let levelQCount = 0;
 let levelCorrect = 0;
 const Q_PER_LEVEL = 25;
-const PASS_THRESHOLD = 0.9;
+
+const PASS_THRESHOLDS = {
+    1: 0.60,
+    2: 0.70,
+    3: 0.80,
+    4: 0.90,
+    5: 0.95,
+    6: 1.00
+};
 
 // Reward System - Minecraft ONLY
 const REWARD_PROMPTS = [
@@ -261,13 +297,13 @@ const MC_TIPS = [
 
 function updateRewardBlur() {
     const img = document.getElementById('reward-img');
-    if(img) {
+    if (img) {
         // Blur decreases as you progress in level count
         // e.g. 0/25 -> 20px blur, 25/25 -> 0px blur
         const blurVal = Math.max(0, 20 - (levelCorrect / Q_PER_LEVEL * 20));
         img.style.filter = `blur(${blurVal}px)`;
     }
-    
+
     const dlBtn = document.getElementById('btn-download-reward');
     if (dlBtn) {
         if (levelCorrect >= 23) { // Unlock at 90% progress
@@ -282,38 +318,38 @@ function updateRewardBlur() {
 
 function changeRewardImage() {
     const btn = document.getElementById('btn-next-reward');
-    if(btn && btn.disabled) return; // prevent double click
+    if (btn && btn.disabled) return; // prevent double click
 
     // Set random tip
     const tipEl = document.getElementById('mc-tip-text');
-    if(tipEl) {
+    if (tipEl) {
         tipEl.innerText = MC_TIPS[Math.floor(Math.random() * MC_TIPS.length)];
     }
 
     showLoading();
-    if(btn) {
+    if (btn) {
         btn.innerText = DICT[currentLang].loading;
         btn.disabled = true;
     }
-    
+
     // Simulate progress
     let progress = 0;
     const bar = document.getElementById('loading-bar');
-    if(!bar) console.error("CRITICAL: Loading bar element not found!");
+    if (!bar) console.error("CRITICAL: Loading bar element not found!");
 
     const interval = setInterval(() => {
         // Slower Progress simulation (Target ~15s to reach 95%)
         // 50ms interval -> 300 ticks in 15s
         // 95 / 300 = 0.31 per tick avg
-        
+
         let inc = 0.3;
         if (progress > 50) inc = 0.2;
         if (progress > 80) inc = 0.1;
         if (progress > 90) inc = 0.05;
-        
+
         progress += Math.random() * inc * 2; // Random variance
         if (progress > 95) progress = 95; // Cap at 95% until load finishes
-        
+
         if (bar) bar.style.width = progress + '%';
     }, 50);
 
@@ -326,18 +362,18 @@ function changeRewardImage() {
             () => resolve(true), // Success
             (err) => {
                 console.log("Switching to offline mode:", err);
-                
+
                 // Fallback to local image immediately (No retry to save time)
                 const localId = Math.floor(Math.random() * 3) + 1;
                 const img = document.getElementById('reward-img');
-                
-                if(img) {
+
+                if (img) {
                     const localSrc = `assets/rewards/img${localId}.jpg`;
                     img.src = localSrc;
                     img.style.opacity = 1;
                 }
                 // Resolve immediately, don't wait for onload. UX > strict correctness here.
-                resolve(false); 
+                resolve(false);
             }
         );
     });
@@ -346,10 +382,10 @@ function changeRewardImage() {
     Promise.all([minTimePromise, loadProcess]).then(() => {
         clearInterval(interval);
         if (bar) bar.style.width = '100%';
-        
+
         setTimeout(() => {
             hideLoading();
-            if(btn) {
+            if (btn) {
                 btn.innerText = DICT[currentLang].next_bg;
                 btn.disabled = false;
             }
@@ -364,21 +400,21 @@ function showLoading() {
         overlay.style.display = 'flex';
         const bar = document.getElementById('loading-bar');
         if (bar) bar.style.width = '0%';
-        
+
         // Show Skip button after 5s
         const skipBtn = document.getElementById('btn-skip-loading');
-        if(skipBtn) {
-             skipBtn.style.display = 'none'; // Reset
-             setTimeout(() => {
-                 if(overlay.style.display !== 'none') {
-                     skipBtn.style.display = 'block';
-                 }
-             }, 5000);
+        if (skipBtn) {
+            skipBtn.style.display = 'none'; // Reset
+            setTimeout(() => {
+                if (overlay.style.display !== 'none') {
+                    skipBtn.style.display = 'block';
+                }
+            }, 5000);
         }
 
         // Block interaction
         const uiContainer = document.getElementById('ui-container');
-        if(uiContainer) uiContainer.style.pointerEvents = 'none';
+        if (uiContainer) uiContainer.style.pointerEvents = 'none';
     }
 }
 
@@ -390,7 +426,7 @@ function hideLoading() {
             overlay.style.display = 'none';
             // Restore interaction
             const uiContainer = document.getElementById('ui-container');
-            if(uiContainer) uiContainer.style.pointerEvents = '';
+            if (uiContainer) uiContainer.style.pointerEvents = '';
         }, 500);
     }
 }
@@ -401,13 +437,35 @@ function loadNewImage(onSuccess, onError) {
         if (onSuccess) onSuccess();
         return;
     }
-    
+
     const prompt = REWARD_PROMPTS[Math.floor(Math.random() * REWARD_PROMPTS.length)];
     const seed = Math.floor(Math.random() * 10000);
     // Restore High Quality & Standard Model
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1280&height=720&nologo=true&seed=${seed}&t=${Date.now()}`;
 
-    // NO TIMEOUT LIMIT - Wait until success or network error
+    // RESTORED FUNCTIONS
+
+    function getFilters() {
+        return {
+            nom: ui.settings.nom.checked,
+            akk: ui.settings.akk.checked,
+            dat: ui.settings.dat.checked,
+            gen: ui.settings.gen.checked,
+            def: ui.settings.def.checked,
+            indef: ui.settings.indef.checked,
+            none: ui.settings.none.checked
+        };
+    }
+
+    function calcLevel() {
+        // Note: Level is now primarily driven by Q_PER_LEVEL and Accuracy in checkAnswer, 
+        // but this might be used for initial state or verification.
+        // However, the main logic uses 'level' variable directly.
+        // Restoring for safety if legacy calls exist.
+        if (streak < 10) return 1;
+        return level;
+    }
+    // TIMEOUT LIMIT - Wait until success or network error
     console.log("Starting AI generation (No Timeout)...");
 
     const tempImg = new Image();
@@ -415,19 +473,19 @@ function loadNewImage(onSuccess, onError) {
         img.style.opacity = 0;
         setTimeout(() => {
             img.src = url;
-            img.onload = () => { 
+            img.onload = () => {
                 img.style.opacity = 1;
-                if(onSuccess) onSuccess();
+                if (onSuccess) onSuccess();
             };
             img.onerror = () => {
-                 console.error("DOM Image load failed");
-                 if(onError) onError("DOM Error");
+                console.error("DOM Image load failed");
+                if (onError) onError("DOM Error");
             };
-        }, 200); 
+        }, 200);
     };
     tempImg.onerror = () => {
         console.error("Failed to load image (Network/Server Error)");
-        if(onError) onError("Network Error"); 
+        if (onError) onError("Network Error");
     };
     tempImg.src = url;
 }
@@ -475,9 +533,9 @@ let ui = {};
 
 // 3D Scene Setup (Minecraft Background)
 const scene = new THREE.Scene();
-scene.background = null; 
+scene.background = null;
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false }); 
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 // Lighting
@@ -499,9 +557,9 @@ function createBlockTexture(type) {
     if (type === 'grass') {
         ctx.fillStyle = '#5b8c28'; // Grass Green
         ctx.fillRect(0, 0, size, size);
-        for(let i=0; i<100; i++) {
+        for (let i = 0; i < 100; i++) {
             ctx.fillStyle = Math.random() > 0.5 ? '#4a7520' : '#6aa830';
-            ctx.fillRect(Math.random()*size, Math.random()*size, 4, 4);
+            ctx.fillRect(Math.random() * size, Math.random() * size, 4, 4);
         }
     } else if (type === 'diamond') {
         ctx.fillStyle = '#64d4d2'; // Diamond Blue
@@ -513,8 +571,8 @@ function createBlockTexture(type) {
         ctx.fillStyle = '#704824'; // Wood Brown
         ctx.fillRect(0, 0, size, size);
         ctx.fillStyle = '#57371b';
-        for(let i=0; i<5; i++) {
-            ctx.fillRect(0, i*12 + 4, size, 4);
+        for (let i = 0; i < 5; i++) {
+            ctx.fillRect(0, i * 12 + 4, size, 4);
         }
     } else if (type === 'gold') {
         ctx.fillStyle = '#fcee4b'; // Gold
@@ -522,24 +580,24 @@ function createBlockTexture(type) {
         ctx.fillStyle = '#fff7aa';
         ctx.fillRect(5, 5, 20, 20);
         ctx.fillStyle = '#d4c226';
-        ctx.fillRect(size-10, size-10, 10, 10);
+        ctx.fillRect(size - 10, size - 10, 10, 10);
     } else if (type === 'tnt') {
         // Top/Bottom Red
         ctx.fillStyle = '#db382c';
         ctx.fillRect(0, 0, size, size);
         // White band
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, size/3, size, size/3);
+        ctx.fillRect(0, size / 3, size, size / 3);
         // Text
         ctx.fillStyle = '#000000';
         ctx.font = 'bold 20px monospace';
-        ctx.fillText('TNT', 15, size/2 + 6);
+        ctx.fillText('TNT', 15, size / 2 + 6);
     } else if (type === 'smoke') {
         ctx.fillStyle = '#555555';
         ctx.fillRect(0, 0, size, size);
-        for(let i=0; i<50; i++) {
+        for (let i = 0; i < 50; i++) {
             ctx.fillStyle = '#333333';
-            ctx.fillRect(Math.random()*size, Math.random()*size, 8, 8);
+            ctx.fillRect(Math.random() * size, Math.random() * size, 8, 8);
         }
     } else if (type === 'fire') {
         ctx.fillStyle = '#ff5500';
@@ -566,7 +624,7 @@ for (let i = 0; i < 6; i++) {
         blockMaterials[Math.floor(Math.random() * blockMaterials.length)]
     );
     mesh.position.set(
-        (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8), 
+        (Math.random() > 0.5 ? 1 : -1) * (8 + Math.random() * 8),
         (Math.random() - 0.5) * 15,
         -5 - Math.random() * 10
     );
@@ -583,7 +641,7 @@ const diamondLoot = [];
 // Animation Loop
 function animate() {
     requestAnimationFrame(animate);
-    
+
     // Background Shapes
     shapes.forEach(s => {
         s.mesh.rotation.x += s.speed;
@@ -625,7 +683,7 @@ function triggerTNTExplosion() {
     document.body.appendChild(flash);
     setTimeout(() => {
         flash.style.opacity = '0';
-        setTimeout(() => { if(flash.parentNode) flash.parentNode.removeChild(flash); }, 500);
+        setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 500);
     }, 50);
 
     // 2. Create TNT Block
@@ -677,7 +735,7 @@ function spawnExplosionParticles(pos) {
             p.rotation.y += 0.3;
             // Gravity
             velocity.y -= 0.03;
-            
+
             if (frame < 80) requestAnimationFrame(anim);
             else scene.remove(p);
         };
@@ -700,22 +758,22 @@ function playShake() {
 }
 
 function spawnDiamondReward() {
-    const diamMat = new THREE.MeshStandardMaterial({ 
+    const diamMat = new THREE.MeshStandardMaterial({
         map: createBlockTexture('diamond'),
         emissive: 0x00ffff,
         emissiveIntensity: 0.4
     });
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const diamond = new THREE.Mesh(geo, diamMat);
-    
+
     // Random position in the background "loot pile" area
-    const xPos = (diamondLoot.length % 10 - 4.5) * 1.5; 
+    const xPos = (diamondLoot.length % 10 - 4.5) * 1.5;
     const row = Math.floor(diamondLoot.length / 10);
     const yPos = -3 - (row * 1.2);
-    
+
     diamond.position.set(xPos, -10, -5); // Start from below
     diamond.baseY = yPos;
-    
+
     scene.add(diamond);
     diamondLoot.push({ mesh: diamond, baseY: yPos });
 
@@ -725,7 +783,7 @@ function spawnDiamondReward() {
         t += 0.05;
         const currentY = -10 + (yPos - (-10)) * Math.min(t, 1);
         diamond.position.y = currentY;
-        
+
         if (t < 1) requestAnimationFrame(popAnim);
     };
     popAnim();
@@ -740,16 +798,16 @@ function spawnSparkles(pos) {
 
     for (let i = 0; i < 8; i++) {
         const p = new THREE.Mesh(geo, mat);
-        p.position.copy(pos).add(new THREE.Vector3((Math.random()-0.5), (Math.random()-0.5), (Math.random()-0.5)));
+        p.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)));
         scene.add(p);
-        
+
         let frame = 0;
         const anim = () => {
             frame++;
             p.position.y += 0.02;
             p.material.opacity = 1 - (frame / 40);
             p.material.transparent = true;
-            
+
             if (frame < 40) requestAnimationFrame(anim);
             else scene.remove(p);
         };
@@ -761,29 +819,79 @@ function spawnSparkles(pos) {
 function renderReferenceTables() {
     const container = document.getElementById('table-container');
     const t = DICT[currentLang];
-    const weakHTML = createTableHTML(t.weak, GRAMMAR_TABLE[ARTICLES.DEF]);
-    const mixedHTML = createTableHTML(t.mixed, GRAMMAR_TABLE[ARTICLES.INDEF]);
-    const strongHTML = createTableHTML(t.strong, GRAMMAR_TABLE[ARTICLES.NONE]);
 
-    container.innerHTML = `
-        <div id="tab-weak" class="grammar-table-content">${weakHTML}</div>
-        <div id="tab-mixed" class="grammar-table-content hidden">${mixedHTML}</div>
-        <div id="tab-strong" class="grammar-table-content hidden">${strongHTML}</div>
-    `;
-    
-    const hint = document.createElement('p');
-    hint.style.fontSize = '0.8rem';
-    hint.style.color = '#666';
-    hint.style.marginTop = '15px';
-    hint.style.fontStyle = 'italic';
-    hint.innerText = t.shapes_hint;
-    container.appendChild(hint);
-    
-    const activeBtn = document.querySelector('.tab-btn.active');
-    if (activeBtn) {
-        showTableTab(activeBtn.dataset.tab);
+    // Check Mode
+    const isK1 = ui.settings.mode_k1 && ui.settings.mode_k1.checked;
+
+    if (isK1) {
+        // --- K1 TABLE ---
+        const tableData = K1_GRAMMAR_TABLE;
+        let html = `<div style="overflow-x:auto"><table class="grammar-table" style="width:100%; min-width:300px;">`;
+        // Head
+        html += `<thead><tr>`;
+        tableData.headers.forEach(h => html += `<th>${h}</th>`);
+        html += `</tr></thead>`;
+        // Body
+        html += `<tbody>`;
+        tableData.rows.forEach(row => {
+            html += `<tr>
+                <td><b>${row.person}</b></td>
+                <td><span class="highlight" style="color:#d97757">${row.end}</span></td>
+                <td>${row.ex}</td>
+                <td><i>${row.sein}</i></td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+
+        container.innerHTML = `<div class="grammar-table-content">${html}</div>`;
+
+        // Note
+        const hint = document.createElement('p');
+        hint.style.cssText = "font-size:0.85rem; color:#444; margin-top:10px; background:#fff3e0; padding:8px; border-radius:4px; border-left: 3px solid #d97757;";
+        hint.innerHTML = "💡 " + tableData.note;
+        container.appendChild(hint);
+
+        // Update Modal Title
+        const modalTitle = document.getElementById('table-modal-title');
+        if (modalTitle) modalTitle.innerText = tableData.title;
+
+        // Hide Tab Buttons for K1 (since there's only one table)
+        const tabs = document.querySelector('.table-tabs');
+        if (tabs) tabs.style.display = 'none';
+
     } else {
-        showTableTab('weak');
+        // --- ADJECTIVE TABLES ---
+        // Restore Tabs
+        const tabs = document.querySelector('.table-tabs');
+        if (tabs) tabs.style.display = 'flex';
+
+        const weakHTML = createTableHTML(t.weak, GRAMMAR_TABLE[ARTICLES.DEF]);
+        const mixedHTML = createTableHTML(t.mixed, GRAMMAR_TABLE[ARTICLES.INDEF]);
+        const strongHTML = createTableHTML(t.strong, GRAMMAR_TABLE[ARTICLES.NONE]);
+
+        container.innerHTML = `
+            <div id="tab-weak" class="grammar-table-content">${weakHTML}</div>
+            <div id="tab-mixed" class="grammar-table-content hidden">${mixedHTML}</div>
+            <div id="tab-strong" class="grammar-table-content hidden">${strongHTML}</div>
+        `;
+
+        const hint = document.createElement('p');
+        hint.style.fontSize = '0.8rem';
+        hint.style.color = '#666';
+        hint.style.marginTop = '15px';
+        hint.style.fontStyle = 'italic';
+        hint.innerText = t.shapes_hint;
+        container.appendChild(hint);
+
+        const activeBtn = document.querySelector('.tab-btn.active');
+        if (activeBtn) {
+            showTableTab(activeBtn.dataset.tab);
+        } else {
+            showTableTab('weak');
+        }
+
+        const modalTitle = document.getElementById('table-modal-title');
+        if (modalTitle) modalTitle.innerText = t.modal_title;
     }
 }
 
@@ -795,12 +903,12 @@ function showTableTab(tabName) {
 function createTableHTML(title, data) {
     const t = DICT[currentLang];
     let html = `<h4>${title}</h4><table><thead><tr><th>${t.case}</th><th class="masc">${t.masc}</th><th class="fem">${t.fem}</th><th class="neut">${t.neut}</th><th class="pl">${t.pl}</th></tr></thead><tbody>`;
-    
+
     const caseOrder = [CASES.NOM, CASES.AKK, CASES.DAT, CASES.GEN];
     const caseMap = { 'Nominative': 'nom', 'Accusative': 'akk', 'Dative': 'dat', 'Genitive': 'gen' };
 
     caseOrder.forEach(c => {
-        const caseKey = caseMap[c]; 
+        const caseKey = caseMap[c];
         const caseLabel = t[caseKey] || c;
         html += `<tr><td><b>${caseLabel}</b></td>`;
         [GENDERS.MASC, GENDERS.FEM, GENDERS.NEUT, GENDERS.PL].forEach(g => {
@@ -814,7 +922,6 @@ function createTableHTML(title, data) {
     return html;
 }
 
-// RESTORED FUNCTIONS
 
 function getFilters() {
     return {
@@ -837,47 +944,130 @@ function calcLevel() {
     return 6; // Max Level
 }
 
+
 function nextQuestion() {
     // Mode check
-    const isArtDrill = ui.settings.mode_art.checked;
-    engine.setMode(isArtDrill ? 'article_drill' : 'adjective');
+    if (ui.settings.mode_k1 && ui.settings.mode_k1.checked) {
+        engine.setMode('konjunktiv_i');
+    } else {
+        const isArtDrill = ui.settings.mode_art.checked;
+        engine.setMode(isArtDrill ? 'article_drill' : 'adjective');
+    }
 
-    // Pass the explicit level variable
+    // Generate Question
     currentQ = engine.generateQuestion(getFilters(), level);
-    
+
     // Reset state
     userAnswers = { art: null, adjSuffix: null };
     selectedGap = null;
     isChecking = false;
     lastCheckResult = null;
     lastIncorrectExplanation = null;
-    
+
     // UI Reset
     ui.sentence.innerHTML = '';
     ui.options.classList.add('hidden');
     ui.btnCheck.classList.remove('hidden');
+
+    // Clear Hint/Explanation Box
+    const explanationArea = document.getElementById('explanation-area');
+    if (explanationArea) {
+        explanationArea.innerHTML = '';
+        explanationArea.classList.add('hidden'); // Ensure it hides
+        explanationArea.style.display = 'none';  // double ensure
+    }
     ui.btnNext.classList.add('hidden');
     ui.btnCheck.disabled = true;
-    
+
+    if (currentQ.mode === 'konjunktiv_i') {
+        // K1 Display using Classes (Mobile Friendly)
+        ui.sentence.innerHTML = `
+            <div class="k1-prompt">${currentQ.prompt}</div>
+            <div class="k1-report-label">Du berichtest:</div>
+            <div class="k1-target">Er sagt, er <span class="k1-blank">?</span> ...</div>
+        `;
+
+        // Show Mic Button
+        const btnMic = document.getElementById('btn-mic');
+        if (btnMic) btnMic.classList.remove('hidden');
+
+        // Options - HIDDEN BY DEFAULT per user request
+        ui.options.innerHTML = '';
+        ui.options.classList.add('hidden'); // Start hidden
+
+        // "Show Hint" Button
+        const btnHint = document.createElement('button');
+        btnHint.className = 'btn';
+        btnHint.innerText = DICT[currentLang].show_options || "💡 Options";
+        btnHint.style.fontSize = '0.9rem';
+        btnHint.style.marginBottom = '10px';
+        btnHint.onclick = () => {
+            btnHint.style.display = 'none';
+            ui.options.classList.remove('hidden');
+            ui.options.style.display = 'flex';
+        };
+        ui.sentence.appendChild(document.createElement('br'));
+        ui.sentence.appendChild(btnHint);
+
+
+        ui.options.style.flexWrap = 'wrap';
+        ui.options.style.gap = '10px';
+        ui.options.style.justifyContent = 'center';
+
+        // Distractors
+        let opts = [currentQ.verb.konj_er]; // Correct
+        if (currentQ.verb.ind_ich !== currentQ.verb.konj_er) opts.push(currentQ.verb.ind_ich); // Distractor
+        if (currentQ.verb.infinitive === 'sein') opts.push('ist');
+        if (currentQ.verb.infinitive === 'haben') opts.push('hat');
+
+        // Shuffle
+        opts.sort(() => Math.random() - 0.5);
+
+        opts.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-chip';
+            btn.innerText = opt;
+            btn.onclick = () => checkK1Click(opt);
+            ui.options.appendChild(btn);
+        });
+
+        ui.context.innerText = DICT[currentLang].k1_hint;
+        ui.btnCheck.classList.add('hidden'); // No check button needed
+
+        // Update tags
+        const tagDecl = document.getElementById('tag-declension');
+        const tagCase = document.getElementById('tag-case');
+        if (tagDecl) tagDecl.innerText = "Konjunktiv I";
+        if (tagCase) tagCase.innerText = "Indirect";
+
+        return;
+    } else {
+        // Hide Mic if not K1
+        const btnMic = document.getElementById('btn-mic');
+        if (btnMic) btnMic.classList.add('hidden');
+        ui.options.style.display = 'grid'; // Restore grid for standard mode
+    }
+
     const expArea = document.getElementById('explanation-area');
-    if(expArea) {
+    if (expArea) {
         expArea.classList.remove('visible');
         expArea.classList.add('hidden');
         expArea.style.display = 'none';
+        expArea.innerHTML = ''; // Clear text content
     }
-    
+
     renderSentence();
     updateStats(); // Update level display
-    
+
     // Update Tags
     const tagsDiv = document.getElementById('question-tags');
     if (tagsDiv) {
         const t = DICT[currentLang];
         const tagDecl = document.getElementById('tag-declension');
         const tagCase = document.getElementById('tag-case');
-        
-        if(tagDecl && tagCase) {
-             if (currentQ.mode === 'article_drill') {
+
+        if (tagDecl && tagCase) {
+            if (currentQ.mode === 'article_drill') {
                 tagDecl.innerText = t.mode_art; // "Noun Articles"
                 tagCase.innerText = t.nom; // "Nominative" (Always Nom for drill)
             } else {
@@ -886,9 +1076,9 @@ function nextQuestion() {
                 if (currentQ.artType === ARTICLES.DEF) typeStr = t.weak;
                 else if (currentQ.artType === ARTICLES.INDEF) typeStr = t.mixed;
                 else typeStr = t.strong;
-                
+
                 tagDecl.innerText = typeStr;
-                
+
                 // Case
                 const caseMap = { [CASES.NOM]: 'nom', [CASES.AKK]: 'akk', [CASES.DAT]: 'dat', [CASES.GEN]: 'gen' };
                 tagCase.innerText = t[caseMap[currentQ.caseType]];
@@ -898,15 +1088,27 @@ function nextQuestion() {
 }
 
 function renderSentence() {
+    if (currentQ.mode === 'konjunktiv_i') return; // Handled in nextQuestion
     const q = currentQ;
     const ctx = q.context;
-    // Context
-    const ctxSpan = document.createElement('span');
-    ctxSpan.innerText = ctx.text + ' ';
-    ui.sentence.appendChild(ctxSpan);
-    
-    // Hint
-    ui.context.innerText = `(${DICT[currentLang][ctx.meaningKey] || ctx.text})`;
+
+    // Clear context hint initially to avoid persistence
+    ui.context.innerText = '';
+
+    // Render Context (if exists)
+    if (ctx) {
+        const ctxSpan = document.createElement('span');
+        ctxSpan.innerText = ctx.text + ' ';
+        ui.sentence.appendChild(ctxSpan);
+        // Hint
+        ui.context.innerText = `(${DICT[currentLang][ctx.meaningKey] || ctx.text})`;
+    } else {
+        // No sentence context (e.g. Article Drill)
+        // Check if we should show noun meaning?
+        if (q.noun && q.noun.meaning) {
+            ui.context.innerText = `(${q.noun.meaning})`;
+        }
+    }
 
     if (q.mode === 'article_drill') {
         // [Gap] [Noun]
@@ -916,15 +1118,15 @@ function renderSentence() {
         gapArt.innerText = '___';
         gapArt.onclick = () => openOptions('art');
         ui.sentence.appendChild(gapArt);
-        
+
         const nounSpan = document.createElement('span');
         nounSpan.className = 'noun';
         nounSpan.innerText = ' ' + q.noun.word;
         ui.sentence.appendChild(nounSpan);
-        
+
     } else {
         // [Gap-Art] [Adj-Gap] [Noun]
-        
+
         // Article Gap (or fixed text if none)
         if (q.artType === ARTICLES.NONE) {
             // No article gap needed
@@ -962,18 +1164,18 @@ function renderSentence() {
 function openOptions(type) {
     if (isChecking) return;
     selectedGap = type;
-    
+
     ui.options.innerHTML = '';
     ui.options.classList.remove('hidden');
 
     let opts = [];
     if (type === 'art') {
         if (currentQ.mode === 'article_drill') {
-             opts = ['der', 'die', 'das', 'die (Pl)'];
+            opts = ['der', 'die', 'das', 'die (Pl)'];
         } else {
-             // Depending on artType
-             if (currentQ.artType === ARTICLES.DEF) opts = ['der', 'die', 'das', 'den', 'dem', 'des'];
-             else if (currentQ.artType === ARTICLES.INDEF) opts = ['ein', 'eine', 'einen', 'einem', 'einer', 'eines', 'keine', 'keinen'];
+            // Depending on artType
+            if (currentQ.artType === ARTICLES.DEF) opts = ['der', 'die', 'das', 'den', 'dem', 'des'];
+            else if (currentQ.artType === ARTICLES.INDEF) opts = ['ein', 'eine', 'einen', 'einem', 'einer', 'eines', 'keine', 'keinen'];
         }
     } else {
         // Adjective Endings
@@ -993,7 +1195,7 @@ function selectOption(val) {
     if (selectedGap === 'art') {
         userAnswers.art = val.replace(' (Pl)', ''); // Handle special plural display
         const el = document.getElementById('gap-art');
-        if(el) {
+        if (el) {
             el.innerText = val;
             el.classList.remove('empty');
             el.classList.add('filled');
@@ -1001,7 +1203,7 @@ function selectOption(val) {
     } else {
         userAnswers.adjSuffix = val;
         const el = document.getElementById('gap-adj');
-        if(el) {
+        if (el) {
             el.innerText = '-' + val;
             el.classList.remove('empty');
             el.classList.add('filled');
@@ -1024,7 +1226,7 @@ function checkReady() {
 }
 
 // Helper to show notifications
-function showNotification(msg, duration=3000) {
+function showNotification(msg, duration = 3000) {
     const div = document.createElement('div');
     div.style.position = 'fixed';
     div.style.top = '20%';
@@ -1041,7 +1243,7 @@ function showNotification(msg, duration=3000) {
     div.innerText = msg;
     document.body.appendChild(div);
     setTimeout(() => {
-        if(div.parentNode) div.parentNode.removeChild(div);
+        if (div.parentNode) div.parentNode.removeChild(div);
     }, duration);
 }
 
@@ -1049,10 +1251,10 @@ function checkAnswer() {
     isChecking = true;
     const res = engine.checkAnswer(userAnswers.art, userAnswers.adjSuffix);
     lastCheckResult = res;
-    
+
     // Update Level Stats
     levelQCount++;
-    
+
     // Visual Feedback
     if (currentQ.mode === 'article_drill') {
         const artGap = document.getElementById('gap-art');
@@ -1112,16 +1314,20 @@ function checkAnswer() {
     // CHECK LEVEL UP
     if (levelQCount >= Q_PER_LEVEL) {
         const score = levelCorrect / levelQCount;
-        if (score >= PASS_THRESHOLD) {
+        // Default to 1.0 if level > 6 (though we cap at 6)
+        const threshold = PASS_THRESHOLDS[level] || 1.00;
+
+        if (score >= threshold) {
             if (level < 6) {
                 level++;
                 showNotification(`LEVEL UP! \n You are now Level ${level}`);
                 // Play sound?
             } else {
-                showNotification(`MAX LEVEL MASTERED!`);
+                showNotification(`MAX LEVEL MASTERED! \n You maintain Level 6!`);
             }
         } else {
-            showNotification(`Level Failed (${Math.floor(score*100)}%). \n Try Again!`);
+            const need = Math.ceil(threshold * 100);
+            showNotification(`Level Failed (${Math.floor(score * 100)}%). \n Need ${need}% to pass. \n Try Again!`);
         }
         // Reset for next round (either next level or retry)
         levelQCount = 0;
@@ -1129,24 +1335,38 @@ function checkAnswer() {
     }
 
     updateStats();
-    updateRewardBlur(); 
+    updateRewardBlur();
     saveProgress();
 
     ui.btnCheck.classList.add('hidden');
     ui.btnNext.classList.remove('hidden');
 }
 
+function checkK1Click(answer) {
+    if (!currentQ || currentQ.mode !== 'konjunktiv_i') return;
+
+    const correct = answer === currentQ.answerKey;
+    if (correct) {
+        showResult(true);
+        // Show full answer usage
+        ui.sentence.innerHTML += `<div style="color:green; margin-top:10px;">✅ Correct! "Er sagt, er <strong>${currentQ.answerKey}</strong>..."</div>`;
+    } else {
+        handleK1Failure(null, answer);
+    }
+}
+
+
 function updateExplanationText(lang) {
     if (!lastIncorrectExplanation) return;
-    
+
     const t = DICT[lang];
     const keys = lastIncorrectExplanation.explanationKeys;
     const q = currentQ;
-    
+
     const caseMap = { [CASES.NOM]: 'nom', [CASES.AKK]: 'akk', [CASES.DAT]: 'dat', [CASES.GEN]: 'gen' };
     const caseStr = t[caseMap[keys.case]];
     const genderStr = t[keys.gender]; // masc, fem, neut, pl
-    
+
     let artTypeStr = "";
     if (keys.artType === ARTICLES.DEF) artTypeStr = t.art_short_def;
     else if (keys.artType === ARTICLES.INDEF) artTypeStr = t.art_short_indef;
@@ -1159,7 +1379,7 @@ function updateExplanationText(lang) {
         .replace('{artType}', artTypeStr);
 
     const expArea = document.getElementById('explanation-area');
-    if(expArea) {
+    if (expArea) {
         expArea.classList.remove('hidden');
         expArea.innerHTML = `<strong>${t.reason_label}</strong><br>${text}`;
         expArea.style.display = 'block';
@@ -1171,14 +1391,14 @@ function updateExplanationText(lang) {
 
 function updateStats() {
     ui.streak.innerText = streak;
-    
+
     // Mastery Bar now shows Progress within the current level batch (of 25)
     // We want it to fill up as we get Correct answers, so 23/25 = 92% -> Pass
     const percentage = Math.min(100, Math.floor((levelCorrect / Q_PER_LEVEL) * 100));
-    
+
     ui.masteryBar.style.width = percentage + '%';
     ui.masteryBar.innerText = `${levelCorrect}/${Q_PER_LEVEL}`;
-    
+
     const levelEl = document.getElementById('level-val');
     if (levelEl) levelEl.innerText = level;
 }
@@ -1186,16 +1406,16 @@ function updateStats() {
 function updateLanguage(lang) {
     currentLang = lang;
     const t = DICT[lang];
-    
+
     updateLabel('main-title', t.title);
     updateLabel('sub-title', t.subtitle);
     updateLabel('lbl-streak', t.streak);
-    updateLabel('lbl-mastery', t.mastery); 
+    updateLabel('lbl-mastery', t.mastery);
     updateLabel('lbl-level', t.level_label || "Level"); // Fallback
     updateLabel('btn-check', t.check);
     updateLabel('btn-next', t.next);
     updateLabel('btn-table', t.table);
-    
+
     // Settings labels
     updateLabel('lbl-settings', t.settings);
     updateLabel('lbl-case', t.case);
@@ -1209,21 +1429,26 @@ function updateLanguage(lang) {
     updateLabel('lbl-indef', t.indef);
     updateLabel('lbl-none', t.none);
     updateLabel('lbl-mode-adj', t.mode_adj);
+    updateLabel('lbl-mode-adj', t.mode_adj);
     updateLabel('lbl-mode-art', t.mode_art);
+    updateLabel('lbl-mode-k1', t.k1_mode);
+
 
     // Context hint
-    if (currentQ) {
+    if (currentQ && currentQ.context) {
         ui.context.innerText = `(${t[currentQ.context.meaningKey] || currentQ.context.text})`;
+    } else if (currentQ && currentQ.mode === 'konjunktiv_i') {
+        ui.context.innerText = t.k1_hint;
     }
 
     const backBtnText = document.querySelector('#btn-home .text');
-    if(backBtnText) backBtnText.innerText = t.back_home;
+    if (backBtnText) backBtnText.innerText = t.back_home;
 
     if (currentQ) {
-         const tagDecl = document.getElementById('tag-declension');
-         const tagCase = document.getElementById('tag-case');
-         if(tagDecl && tagCase) {
-             if (currentQ.mode === 'article_drill') {
+        const tagDecl = document.getElementById('tag-declension');
+        const tagCase = document.getElementById('tag-case');
+        if (tagDecl && tagCase) {
+            if (currentQ.mode === 'article_drill') {
                 tagDecl.innerText = t.mode_art;
                 tagCase.innerText = t.nom;
             } else {
@@ -1235,19 +1460,40 @@ function updateLanguage(lang) {
                 const caseMap = { [CASES.NOM]: 'nom', [CASES.AKK]: 'akk', [CASES.DAT]: 'dat', [CASES.GEN]: 'gen' };
                 tagCase.innerText = t[caseMap[currentQ.caseType]];
             }
-         }
+        }
     }
-    
+
     if (document.getElementById('explanation-area').classList.contains('visible')) {
         updateExplanationText(lang);
     }
-    
+
     updateLabel('btn-download-reward', t.save_bg);
     updateLabel('btn-next-reward', t.next_bg);
-    
-    renderReferenceTables(); 
+
+    // Update Mic Button if it exists
+    const btnMic = document.getElementById('btn-mic');
+    if (btnMic) {
+        // Only update text if not currently listening (to avoid overwriting "Listening..." state)
+        if (!btnMic.classList.contains('listening')) {
+            btnMic.innerHTML = '🎤 ' + t.mic_start + ' (Space)';
+        }
+    }
+
+    // Refresh K1 Sentence if active (to fix localized prompts if lang changes mid-game)
+    if (currentQ && currentQ.mode === 'konjunktiv_i') {
+        // We can't easily re-render the whole sentence without re-calling render logic, 
+        // but we can update static parts like "Du berichtest:" if we wrapped them in spans with IDs.
+        // For now, let's just ensure the Hint matches.
+        ui.context.innerText = t.k1_hint;
+
+        // Update Tag "Konjunktiv I" if needed
+        const tagDecl = document.getElementById('tag-declension');
+        if (tagDecl) tagDecl.innerText = t.k1_mode;
+    }
+
+    renderReferenceTables();
     updateLabel('modal-title-text', t.modal_title);
-    
+
     // Update Tab Buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const key = btn.dataset.tab; // weak, mixed, strong
@@ -1269,18 +1515,44 @@ function updateLabel(id, text) {
 function setupEventListeners() {
     ui.btnCheck.addEventListener('click', checkAnswer);
     ui.btnNext.addEventListener('click', nextQuestion);
-    
+
     // Skip Loading Button
     const btnSkip = document.getElementById('btn-skip-loading');
-    if(btnSkip) {
+    if (btnSkip) {
         btnSkip.addEventListener('click', () => {
-             hideLoading();
-             // Also try to cancel current image load if possible or just ignore it
+            hideLoading();
+            // Also try to cancel current image load if possible or just ignore it
         });
     }
-    
+
+    // Level Slider
+    const levelSlider = document.getElementById('level-slider');
+    const levelDisplay = document.getElementById('level-display');
+    if (levelSlider && levelDisplay) {
+        levelSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            levelDisplay.innerText = val;
+            level = val;
+            levelQCount = 0; // Reset progress in level
+            levelCorrect = 0;
+            updateStats();
+        });
+        levelSlider.addEventListener('change', () => {
+            // Refresh question on release
+            nextQuestion();
+        });
+    }
+
+    // Modal Close
+    document.querySelectorAll('.close-panel-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent body click closing immediately?
+            const panel = btn.closest('#settings-panel');
+            if (panel) panel.classList.remove('active');
+        });
+    });
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        if(!btn.dataset.lang) return; // Skip buttons without language data (like settings toggle)
+        if (!btn.dataset.lang) return; // Skip buttons without language data (like settings toggle)
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             updateLanguage(btn.dataset.lang);
@@ -1300,7 +1572,7 @@ function setupEventListeners() {
             }
         });
     }
-    
+
     const btnCloseModal = document.querySelector('#modal-table .close-modal');
     if (btnCloseModal) {
         btnCloseModal.addEventListener('click', (e) => {
@@ -1313,7 +1585,7 @@ function setupEventListeners() {
             }
         });
     }
-    
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1327,7 +1599,7 @@ function setupEventListeners() {
 
     const btnToggleSettings = document.getElementById('btn-toggle-settings');
     const panel = document.getElementById('settings-panel');
-    
+
     if (btnToggleSettings && panel) {
         btnToggleSettings.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1336,10 +1608,10 @@ function setupEventListeners() {
     }
 
     const closeSettings = document.querySelector('.close-panel-btn');
-    if(closeSettings) {
+    if (closeSettings) {
         closeSettings.addEventListener('click', (e) => {
-             e.stopPropagation(); 
-             if(panel) panel.classList.remove('active');
+            e.stopPropagation();
+            if (panel) panel.classList.remove('active');
         });
     }
 
@@ -1351,9 +1623,242 @@ function setupEventListeners() {
         }
     });
 
-    ui.settings.mode_adj.addEventListener('change', nextQuestion);
-    ui.settings.mode_art.addEventListener('change', nextQuestion);
+    ui.settings.mode_adj.addEventListener('change', () => { engine.setMode('adjective'); nextQuestion(); });
+    ui.settings.mode_art.addEventListener('change', () => { engine.setMode('article_drill'); nextQuestion(); });
+    if (ui.settings.mode_k1) ui.settings.mode_k1.addEventListener('change', () => { engine.setMode('konjunktiv_i'); nextQuestion(); });
+
+    // Voice Control
+    const btnMic = document.getElementById('btn-mic');
+    if (btnMic && recognition) {
+        btnMic.classList.remove('hidden');
+        btnMic.disabled = true; // Disabled by default
+        btnMic.style.opacity = '0.5';
+        btnMic.innerHTML = '🎤 Connecting...';
+
+        // Check availability
+        checkMicAvailability(btnMic);
+
+        btnMic.addEventListener('mousedown', startListening);
+        btnMic.addEventListener('mouseup', stopListening);
+        // Touch support
+        btnMic.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+        btnMic.addEventListener('touchend', (e) => { e.preventDefault(); stopListening(); });
+
+        recognition.onstart = () => {
+            isListening = true;
+            updateMicVisuals();
+            console.log("Speech Recognition Started");
+        };
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    final += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+
+            // Visual Feedback
+            const btn = document.getElementById('btn-mic');
+            if (btn) {
+                if (final || interim) {
+                    // Show what's being heard (truncated)
+                    const display = (final + interim).slice(-15);
+                    btn.innerHTML = '👂 ' + display + '...';
+                }
+            }
+
+            // Logic Check (Only on final or sufficiently long interim?)
+            // German Grammar is usually short snippets. 
+            // If final result is ready, check it.
+            if (final) {
+                console.log("Final Heard:", final);
+                checkVoiceAnswer(final);
+                // Optional: Stop after first sentence for drill mode?
+                // stopListening(); 
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech Error:", event.error);
+            isListening = false;
+            updateMicVisuals();
+
+            if (event.error === 'network') {
+                showNotification("Network Error (VPN/Web Speech API needed)");
+            } else if (event.error === 'not-allowed') {
+                showNotification("Microphone Access Denied (Check Settings)");
+            } else if (event.error === 'no-speech') {
+                // Common, ignore or subtle hint
+                // showNotification("No speech detected.");
+            } else {
+                showNotification("Mic Error: " + event.error);
+            }
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            updateMicVisuals();
+            console.log("Speech Recognition Ended");
+        };
+    }
+
+    // Spacebar to talk
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !e.repeat && !isListening && currentQ && currentQ.mode === 'konjunktiv_i') {
+            const btn = document.getElementById('btn-mic');
+            if (btn && !btn.disabled) startListening();
+        }
+    });
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' && isListening) {
+            stopListening();
+        }
+    });
 }
+
+function checkMicAvailability(btn) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        btn.innerHTML = '🎤 Mic Not Supported';
+        return;
+    }
+
+    // Attempt to open channel
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (stream) {
+            // Success
+            console.log("Mic Channel Open");
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            updateMicVisuals(); // Will set text to "Push to Talk"
+
+            // EXPERIMENTAL: Keep track open to prevent iOS dropping permission? 
+            // Or stop it to free resource?
+            // User reported "Cannot record", implying silence. 
+            // Let's try keeping it open if it helps connectivity. 
+            // Side effect: Red recording pill will stay on. 
+            // stream.getTracks().forEach(track => track.stop());  <-- COMMENTED OUT FOR TEST
+
+            // Actually, if we keep it open, SpeechRecognition might fail with "Concurrent".
+            // Let's try stopping it with a delay? 
+            // Or just verify that we REACHED here.
+            stream.getTracks().forEach(track => track.stop()); // Re-enabled stop, but rely on onstart for status.
+        })
+        .catch(function (err) {
+            console.error("Mic Access Error:", err);
+            btn.innerHTML = '🎤 Mic Access Denied';
+            btn.style.backgroundColor = '#555';
+        });
+}
+
+function startListening() {
+    if (!recognition || isListening) return;
+    try {
+        recognition.start();
+        // isListening = true; // Moved to onstart
+        // updateMicVisuals(); // Moved to onstart
+    } catch (e) {
+        console.error(e);
+        showNotification("Mic Start Error: " + e.message);
+    }
+}
+
+function stopListening() {
+    if (!recognition || !isListening) return;
+    try {
+        recognition.stop();
+    } catch (e) {
+        console.error("Stop Error:", e);
+    }
+    // isListening set to false on 'end' event
+}
+
+function updateMicVisuals() {
+    const btn = document.getElementById('btn-mic');
+    // const t = DICT[currentLang]; // Removed dependency for safety or redefine
+    if (btn) {
+        if (isListening) {
+            btn.classList.add('listening');
+            btn.innerHTML = '⏹ Stop'; // Clear toggle indicator
+            btn.style.backgroundColor = '#cc0000'; // Standard recording red
+        } else {
+            btn.classList.remove('listening');
+            btn.innerHTML = '🎤 Start'; // "Click to Start"
+            btn.style.backgroundColor = ''; // Reset
+        }
+    }
+}
+
+function checkVoiceAnswer(text) {
+    if (!currentQ || currentQ.mode !== 'konjunktiv_i') return;
+
+    const lowerText = text.toLowerCase();
+    const key = currentQ.answerKey.toLowerCase();
+
+    // Check for key word (the Konjunktiv verb)
+    if (lowerText.includes(key)) {
+        // Success!
+        showResult(true, true); // (correct, voiceMode)
+        // Explicitly show the full sentence for reinforcement
+        ui.sentence.innerHTML += `<div style="color:green; margin-top:10px; font-size:1.3rem;">✅ "Er sagt, er <strong>${currentQ.answerKey}</strong>..."</div>`;
+    } else {
+        // Failure
+        // Diagnostic: Did they use Indikativ?
+        let feedback = null;
+        if (currentQ.verb.ind_ich !== currentQ.verb.konj_er && lowerText.includes(currentQ.verb.ind_ich.toLowerCase())) {
+            feedback = "Don't use Indikativ!";
+        } else if (lowerText.includes("ist") && key === "sei") {
+            feedback = "No, 'ist' is Indikativ. Use K1!";
+        }
+
+        handleK1Failure(feedback, text);
+    }
+}
+
+function handleK1Failure(feedback, heardText) {
+    streak = 0;
+    levelCorrect = 0; // Punish slightly or just reset streak?
+    updateStats();
+
+    const expArea = document.getElementById('explanation-area');
+    if (expArea) {
+        expArea.classList.remove('hidden');
+        expArea.classList.add('visible');
+        expArea.style.display = 'block';
+        expArea.innerHTML = `
+            <strong>Not quite!</strong><br>
+            You said: "<em>${heardText}</em>"<br>
+            Expected: "<strong>Er sagt, er ${currentQ.answerKey}...</strong>"<br>
+            <span style="color:orange">${feedback || "Remember to use Konjunktiv I!"}</span>
+        `;
+    }
+}
+
+function showResult(correct, isVoice = false) {
+    if (correct) {
+        streak++;
+        levelCorrect++;
+        if (streak % 5 === 0) triggerTNTExplosion();
+        else spawnDiamondReward();
+
+        if (isVoice) {
+            showNotification("Correct! 🎤✨");
+            // No auto-advance. Show next button.
+            ui.btnCheck.classList.add('hidden');
+            ui.btnNext.classList.remove('hidden');
+        } else {
+            // Standard button logic
+            ui.btnCheck.classList.add('hidden');
+            ui.btnNext.classList.remove('hidden');
+        }
+    }
+    updateStats();
+    saveProgress();
+}
+
 
 function initGame() {
     ui = {
@@ -1373,21 +1878,23 @@ function initGame() {
             indef: document.getElementById('opt-indef'),
             none: document.getElementById('opt-none'),
             mode_adj: document.getElementById('mode-adj'),
-            mode_art: document.getElementById('mode-art')
+            mode_adj: document.getElementById('mode-adj'),
+            mode_art: document.getElementById('mode-art'),
+            mode_k1: document.getElementById('mode-k1')
         }
     };
 
     const container = document.getElementById('canvas-container');
     if (container) {
-        container.innerHTML = ''; 
+        container.innerHTML = '';
         container.appendChild(renderer.domElement);
     }
 
     setupEventListeners();
     loadProgress();
     updateStats();
-    updateRewardBlur(); 
-    updateLanguage('zh'); 
+    updateRewardBlur();
+    updateLanguage('zh');
     nextQuestion();
     renderReferenceTables();
 }
@@ -1397,11 +1904,11 @@ document.addEventListener('DOMContentLoaded', () => {
         initGame();
         // Initial load with loading screen
         showLoading();
-        changeRewardImage(); 
+        changeRewardImage();
     } catch (e) {
         console.error("Main Init Error:", e);
         const log = document.getElementById('error-log');
-        if(log) {
+        if (log) {
             log.innerText = "Critical Error: " + e.message;
             log.style.display = 'block';
         }

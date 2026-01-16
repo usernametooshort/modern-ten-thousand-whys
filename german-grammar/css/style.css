@@ -30,14 +30,17 @@ header {
     width: 100%;
     padding: 15px;
     display: flex;
-    justify-content: center; /* Center the title group */
+    justify-content: center;
+    /* Center the title group */
     align-items: flex-start;
     z-index: 10;
-    pointer-events: none; /* Let clicks pass through to canvas where no buttons are */
+    pointer-events: none;
+    /* Let clicks pass through to canvas where no buttons are */
 }
 
-header > * {
-    pointer-events: auto; /* Re-enable clicks for header children */
+header>* {
+    pointer-events: auto;
+    /* Re-enable clicks for header children */
 }
 
 /* Header Elements */
@@ -46,7 +49,8 @@ header > * {
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(4px);
     padding: 10px 30px;
-    border-radius: 4px; /* Slight rounding for the title backing */
+    border-radius: 4px;
+    /* Slight rounding for the title backing */
     border: 2px solid #1a1a1a;
 }
 
@@ -97,13 +101,18 @@ header > * {
 }
 
 /* Minecraft Button Style */
-.btn, .lang-btn, .option-chip, .tab-btn {
-    border: 2px solid #000; /* Minecraft border */
+.btn,
+.lang-btn,
+.option-chip,
+.tab-btn {
+    border: 2px solid #000;
+    /* Minecraft border */
     border-top-color: #fff;
     border-left-color: #fff;
     border-right-color: #555;
     border-bottom-color: #555;
-    background-color: #8b8b8b; /* Stone button color */
+    background-color: #8b8b8b;
+    /* Stone button color */
     color: #fff;
     padding: 8px 16px;
     font-size: 1.2rem;
@@ -114,13 +123,20 @@ header > * {
     transition: transform 0.1s;
 }
 
-.btn:hover, .lang-btn:hover, .option-chip:hover, .tab-btn:hover {
+.btn:hover,
+.lang-btn:hover,
+.option-chip:hover,
+.tab-btn:hover {
     background-color: #9b9b9b;
     transform: translate(-1px, -1px);
     box-shadow: 3px 3px 0 #000;
 }
 
-.btn:active, .lang-btn.active, .option-chip.active, .tab-btn.active, .btn:active {
+.btn:active,
+.lang-btn.active,
+.option-chip.active,
+.tab-btn.active,
+.btn:active {
     background-color: #6b6b6b;
     border-top-color: #555;
     border-left-color: #555;
@@ -131,7 +147,8 @@ header > * {
 }
 
 .lang-btn.active {
-    background-color: #5b8c28; /* Active green */
+    background-color: #5b8c28;
+    /* Active green */
 }
 
 /* Game Panel */
@@ -142,9 +159,10 @@ header > * {
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 800px;
-    background-color: #c6c6c6; /* Minecraft Inventory Grey */
+    background-color: #c6c6c6;
+    /* Minecraft Inventory Grey */
     border: 2px solid #000;
-    box-shadow: 
+    box-shadow:
         inset 2px 2px 0 #fff,
         inset -2px -2px 0 #555,
         4px 4px 0 #000;
@@ -165,6 +183,9 @@ header > * {
     border-right-color: #fff;
     padding: 5px 10px;
     margin-bottom: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+    /* Allow wrapping */
 }
 
 .score-item {
@@ -172,6 +193,23 @@ header > * {
     display: flex;
     gap: 10px;
     align-items: center;
+    white-space: nowrap;
+    /* Prevent label splitting */
+}
+
+@media (max-width: 600px) {
+    #score-board {
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .score-item {
+        font-size: 1rem;
+        width: 100%;
+        justify-content: space-between;
+        /* Spread label and value */
+    }
 }
 
 .progress-container {
@@ -208,7 +246,8 @@ header > * {
 
 .tag-pill {
     background: #000;
-    color: #ffaa00; /* Gold */
+    color: #ffaa00;
+    /* Gold */
     padding: 2px 8px;
     font-size: 1rem;
     border: 1px solid #ffaa00;
@@ -232,7 +271,7 @@ header > * {
 }
 
 .gap:hover {
-    background: rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.1);
 }
 
 .gap.filled {
@@ -275,7 +314,8 @@ header > * {
 }
 
 .btn.primary {
-    background-color: #5b8c28; /* Green */
+    background-color: #5b8c28;
+    /* Green */
     width: 120px;
 }
 
@@ -293,36 +333,47 @@ header > * {
 
 /* Explanation Area */
 #explanation-area {
-    display: none; /* Default hidden */
-    background: #fff3cd; /* Light yellow */
+    display: none;
+    /* Default hidden */
+    background: #fff3cd;
+    /* Light yellow */
     border: 2px solid #e0a800;
     color: #856404;
     padding: 10px;
     margin-top: 10px;
     font-size: 1.1rem;
     text-align: left;
-    box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
 }
+
 #explanation-area.visible {
     display: block;
     animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Settings Panel */
 #settings-panel {
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     position: absolute;
     top: 70px;
     right: 20px;
     width: 250px;
     background-color: #c6c6c6;
     border: 2px solid #000;
-    box-shadow: 
+    box-shadow:
         inset 2px 2px 0 #fff,
         inset -2px -2px 0 #555,
         4px 4px 0 #000;
@@ -335,10 +386,11 @@ header > * {
 #settings-panel.active {
     display: block;
 }
-    margin-top: 0;
-    text-align: center;
-    border-bottom: 2px solid #888;
-    padding-bottom: 5px;
+
+margin-top: 0;
+text-align: center;
+border-bottom: 2px solid #888;
+padding-bottom: 5px;
 }
 
 .setting-group {
@@ -357,7 +409,8 @@ header > * {
     gap: 5px;
 }
 
-.checkbox-wrapper, .radio-wrapper {
+.checkbox-wrapper,
+.radio-wrapper {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -378,7 +431,8 @@ header > * {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    image-rendering: pixelated; /* Critical for low-res Minecraft look */
+    image-rendering: pixelated;
+    /* Critical for low-res Minecraft look */
     transition: filter 0.5s ease;
 }
 
@@ -388,7 +442,8 @@ header > * {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4); /* Darken for readability */
+    background: rgba(0, 0, 0, 0.4);
+    /* Darken for readability */
 }
 
 /* Reward Controls */
@@ -408,7 +463,7 @@ header > * {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.8);
     z-index: 100;
     justify-content: center;
     align-items: center;
@@ -417,7 +472,7 @@ header > * {
 .modal-content {
     background: #c6c6c6;
     border: 2px solid #000;
-    box-shadow: 
+    box-shadow:
         inset 2px 2px 0 #fff,
         inset -2px -2px 0 #555,
         6px 6px 0 #000;
@@ -458,7 +513,8 @@ table {
     border: 2px solid #000;
 }
 
-th, td {
+th,
+td {
     border: 1px solid #888;
     padding: 8px;
     text-align: left;
@@ -481,7 +537,8 @@ th {
 
 /* Mobile Adaptation */
 .close-panel-btn {
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
     position: absolute;
     top: 5px;
     right: 5px;
@@ -493,53 +550,129 @@ th {
 }
 
 @media (max-width: 600px) {
+
+    /* Header Layout Change: Stack vertically */
     header {
-        padding: 5px;
-    }
-    
-    #main-title {
-        font-size: 1.8rem;
-    }
-    
-    #sub-title {
-        font-size: 0.9rem;
-    }
-    
-    .back-home-btn .text {
-        display: none;
-    }
-    
-    #settings-panel {
-        /* Mobile: Center Modal */
-        top: 50%;
-        left: 50%;
-        right: auto;
-        bottom: auto;
-        transform: translate(-50%, -50%);
-        width: 90%;
-        max-width: 320px;
+        position: relative;
+        /* Keep relative, but we change children */
+        height: auto;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        /* Tighter gap */
+        padding-top: 5px;
+        padding-bottom: 5px;
+        background: rgba(46, 46, 46, 0.95);
+        z-index: 100;
     }
 
-    #settings-panel.active {
-        /* Add modal overlay shadow on mobile */
-        box-shadow: 
-            inset 2px 2px 0 #fff,
-            inset -2px -2px 0 #555,
-            4px 4px 0 #000,
-            0 0 0 100vw rgba(0,0,0,0.6);
+    .title-group {
+        order: 1;
+        /* Title first */
+        padding: 2px 10px;
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 2px;
     }
-    
-    #settings-panel .close-panel-btn {
-        display: block; /* Always show close btn on mobile */
+
+    #main-title {
+        font-size: 1.4rem;
+        /* Smaller title */
+        margin: 0;
     }
-    
+
+    #sub-title {
+        font-size: 0.7rem;
+        margin: 0;
+    }
+
+    /* Container for buttons below title */
+    .mobile-header-buttons {
+        display: flex;
+        gap: 10px;
+        order: 2;
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Force buttons into this flow if we moved them via JS, 
+       but here we rely on existing DOM order or CSS Grid. 
+       Let's use Order to shuffle properly. */
+
+    .back-home-btn {
+        position: static;
+        order: 2;
+        padding: 4px 8px;
+        font-size: 0.9rem;
+    }
+
+    .lang-switcher {
+        position: static;
+        order: 3;
+        margin-top: 0;
+        gap: 5px;
+    }
+
+    .lang-btn {
+        padding: 4px 8px;
+        font-size: 0.9rem;
+    }
+
+    /* Settings Panel - CRITICAL FIX */
+    #settings-panel {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 340px;
+        z-index: 9999 !important;
+        /* Above everything */
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    /* Game Panel */
     #game-panel {
+        position: absolute;
+        /* Revert to absolute for centering below header */
+        top: 60%;
+        /* Push down significantly */
+        left: 50%;
+        transform: translate(-50%, -50%);
         width: 95%;
         padding: 10px;
+        max-height: 70vh;
+        overflow-y: auto;
+        z-index: 10;
     }
-    
+
+    /* Scoreboard: Force Stacking */
+    #score-board {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        height: auto;
+    }
+
+    .score-item {
+        font-size: 1rem;
+        width: 100%;
+        justify-content: space-between;
+        white-space: nowrap;
+    }
+
     #sentence-container {
         font-size: 1.5rem;
+        margin: 10px 0;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+    }
+
+    /* Hide the 'Back to Home' text only, keep icon */
+    .back-home-btn .text {
+        display: none;
     }
 }
 
@@ -632,8 +765,9 @@ th {
 #loading-bar {
     width: 0%;
     height: 100%;
-    background: #5b8c28; /* Minecraft Green */
-    box-shadow: inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.3);
+    background: #5b8c28;
+    /* Minecraft Green */
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(0, 0, 0, 0.3);
     transition: width 0.2s linear;
 }
 
