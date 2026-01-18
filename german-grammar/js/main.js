@@ -199,7 +199,7 @@ const DICT = {
         mic_listening: "Zuhören...",
         mic_start: "Sprechen",
         k1_mode: "Konjunktiv I (Gerücht)",
-        k1_hint: "Hör zu und berichte: 'Er sagt, er...'",
+        k1_hint: "Hör zu und berichte was gesagt wurde.",
         show_options: "💡 Optionen zeigen"
 
     }
